@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Android adaptive-icon foreground layer: transparent, glyph kept inside
+       the central safe zone (~50%) so no launcher mask clips it. Background
+       is the separate @color/ic_launcher_background layer. Alpha silhouette
+       doubles as the themed monochrome icon. -->
+  <g transform="translate(256,256) scale(0.50) translate(-290,-256)"
+     fill="none" stroke-width="72" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 140 L240 256 L120 372" stroke="#f1f5f9"/>
+    <path d="M340 372 L460 372" stroke="#22c55e"/>
+  </g>
+</svg>

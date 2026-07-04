@@ -1,7 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- Armilen Remote app tile: dark slate rounded square, prompt glyph light,
-       cursor accent green (green-500). Canonical launcher/app-icon variant. -->
-  <rect width="512" height="512" rx="96" fill="#0f172a"/>
+  <!-- Round variant for Android ic_launcher_round (circular launcher masks). -->
+  <circle cx="256" cy="256" r="256" fill="#0f172a"/>
   <g transform="translate(256,256) scale(0.62) translate(-290,-256)"
      fill="none" stroke-width="72" stroke-linecap="round" stroke-linejoin="round">
     <path d="M120 140 L240 256 L120 372" stroke="#f1f5f9"/>
