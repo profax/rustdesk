@@ -1,0 +1,26 @@
+name: Apply Armilen branding
+description: >
+  Patches sources that live in upstream-tracking submodules. The submodules
+  keep pointing at rustdesk/* (no second fork to maintain), so upstream syncs
+  stay conflict-free; every rebrand patch of submodule code must live in this
+  action, not in the workflows that call it.
+runs:
+  using: composite
+  steps:
+    - name: Set APP_NAME to Armilen Remote in libs/hbb_common
+      shell: bash
+      run: |
+        set -euo pipefail
+        cfg="libs/hbb_common/src/config.rs"
+        if grep -qF 'RwLock::new("Armilen Remote".to_owned())' "$cfg"; then
+          echo "Branding already applied, skipping"
+          exit 0
+        fi
+        if ! grep -qF 'APP_NAME: RwLock<String> = RwLock::new("RustDesk".to_owned())' "$cfg"; then
+          echo "::error file=$cfg::APP_NAME pattern not found, upstream changed the line; update this action"
+          exit 1
+        fi
+        # -i.bak + rm works with both GNU sed (Linux, Git Bash on Windows) and BSD sed (macOS)
+        sed -i.bak 's/APP_NAME: RwLock<String> = RwLock::new("RustDesk"\.to_owned())/APP_NAME: RwLock<String> = RwLock::new("Armilen Remote".to_owned())/' "$cfg"
+        rm -f "$cfg.bak"
+        grep -F 'APP_NAME: RwLock' "$cfg"
