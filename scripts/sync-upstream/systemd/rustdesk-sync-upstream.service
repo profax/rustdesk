@@ -1,0 +1,33 @@
+[Unit]
+Description=Sync Armilen Remote fork with upstream RustDesk stable releases
+Documentation=file:///opt/rustdesk-fork/scripts/sync-upstream/README.md
+# Needs the network up (git fetch / gh API) before it can do anything useful.
+After=network-online.target
+Wants=network-online.target
+# Alert on failure (conflict / crash). Provide the template unit separately,
+# or drop this line if journald is enough.
+OnFailure=rustdesk-sync-upstream-notify@%n.service
+
+[Service]
+Type=oneshot
+
+# --- Host-specific: a clone of profax/rustdesk this service operates on ---
+Environment=REPO_DIR=/opt/rustdesk-fork
+WorkingDirectory=/opt/rustdesk-fork
+
+# gh + git must be authenticated as this user with push access to the fork.
+# Prefer a fine-grained PAT exported to gh, e.g. via an EnvironmentFile:
+#   EnvironmentFile=-/etc/armilen/rustdesk-sync.env   (GH_TOKEN=…, TG_BOT_TOKEN=…, TG_CHAT_ID=…, HTTPS_PROXY=…)
+EnvironmentFile=-/etc/armilen/rustdesk-sync.env
+
+ExecStart=/usr/bin/node scripts/sync-upstream/sync-upstream.mjs
+
+# Least privilege: dedicated unprivileged user owning REPO_DIR.
+User=rustdesk
+Nice=10
+# Hardening (relax if it interferes with git/gh on your host).
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/rustdesk-fork
+ProtectHome=true
+PrivateTmp=true

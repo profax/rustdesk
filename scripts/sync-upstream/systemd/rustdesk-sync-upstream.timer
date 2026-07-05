@@ -1,0 +1,14 @@
+[Unit]
+Description=Periodic upstream-release check for the Armilen Remote fork
+
+[Timer]
+# RustDesk cuts a stable release every few weeks; a daily check is ample.
+OnCalendar=daily
+# Spread the load off midnight and de-sync from other timers.
+RandomizedDelaySec=1h
+# Run once after boot if the machine was off at the scheduled time.
+Persistent=true
+Unit=rustdesk-sync-upstream.service
+
+[Install]
+WantedBy=timers.target

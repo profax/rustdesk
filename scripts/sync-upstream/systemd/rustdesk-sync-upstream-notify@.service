@@ -1,0 +1,17 @@
+[Unit]
+Description=Alert that %i failed
+# Templated OnFailure= handler for rustdesk-sync-upstream.service. The main
+# script already sends its own Telegram alert on the paths it can catch; this
+# is the backstop for the cases where it dies before that (OOM, exec failure).
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/armilen/rustdesk-sync.env
+# Posts a one-line failure notice if Telegram creds are present; otherwise noop.
+ExecStart=/usr/bin/bash -c '\
+  test -n "$TG_BOT_TOKEN" -a -n "$TG_CHAT_ID" || exit 0; \
+  curl -fsS --max-time 15 ${HTTPS_PROXY:+--proxy "$HTTPS_PROXY"} \
+    "https://api.telegram.org/bot$TG_BOT_TOKEN/sendMessage" \
+    -d chat_id="$TG_CHAT_ID" \
+    --data-urlencode text="❌ %i завершился с ошибкой (см. journalctl -u %i)" >/dev/null'
+User=rustdesk
