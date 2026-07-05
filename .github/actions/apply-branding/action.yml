@@ -24,3 +24,24 @@ runs:
         sed -i.bak 's/APP_NAME: RwLock<String> = RwLock::new("RustDesk"\.to_owned())/APP_NAME: RwLock<String> = RwLock::new("Armilen Remote".to_owned())/' "$cfg"
         rm -f "$cfg.bak"
         grep -F 'APP_NAME: RwLock' "$cfg"
+
+    - name: Disable built-in RustDesk account (login/address-book sync) in libs/hbb_common
+      shell: bash
+      run: |
+        set -euo pipefail
+        cfg="libs/hbb_common/src/config.rs"
+        marker="pub fn is_disable_account() -> bool {"
+        if grep -A1 -F "$marker" "$cfg" | grep -qF "true // Armilen"; then
+          echo "Branding already applied, skipping"
+          exit 0
+        fi
+        if ! grep -A1 -F "$marker" "$cfg" | grep -qF 'is_some_hard_opton("disable-account")'; then
+          echo "::error file=$cfg::is_disable_account body not found or changed upstream, update this action"
+          exit 1
+        fi
+        # Мы не используем встроенный аккаунт RustDesk (вход/синхронизацию
+        # адресной книги через api-server): у нас для этого desk.armilen.ru.
+        # Отключаем насовсем, не через подписанный custom-client конфиг
+        # (ключ подписи RustDesk нам недоступен): убирает "Logout (<user>)" в UI.
+        perl -0pi -e 's/pub fn is_disable_account\(\) -> bool \{\n    is_some_hard_opton\("disable-account"\)\n\}/pub fn is_disable_account() -> bool {\n    true \/\/ Armilen: свой аккаунт RustDesk не используем\n}/' "$cfg"
+        grep -A1 -F "$marker" "$cfg"
