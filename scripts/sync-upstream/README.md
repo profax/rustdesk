@@ -38,8 +38,9 @@ EOF
 sudo chmod 640 /etc/armilen/rustdesk-sync.env
 sudo chown root:rustdesk /etc/armilen/rustdesk-sync.env
 
-# 3. gh must accept GH_TOKEN (it does automatically from the env) and git must
-#    push over https using it. Confirm once as the service user:
+# 3. gh reads GH_TOKEN from the env automatically. Wire gh in as git's
+#    credential helper once, as the service user, so `git push` authenticates:
+sudo -u rustdesk env GH_TOKEN=… gh auth setup-git
 sudo -u rustdesk env GH_TOKEN=… gh auth status
 
 # 4. Install units:

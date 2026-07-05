@@ -25,9 +25,11 @@ ExecStart=/usr/bin/node scripts/sync-upstream/sync-upstream.mjs
 # Least privilege: dedicated unprivileged user owning REPO_DIR.
 User=rustdesk
 Nice=10
-# Hardening (relax if it interferes with git/gh on your host).
+# Hardening (relax further if it interferes with git/gh on your host).
+# NOTE: ProtectHome is intentionally NOT set — git and gh read their credential
+# config (~/.gitconfig, ~/.config/gh) from the service user's home to push and
+# open PRs. Run `gh auth setup-git` once as this user so pushes authenticate.
 NoNewPrivileges=true
 ProtectSystem=strict
 ReadWritePaths=/opt/rustdesk-fork
-ProtectHome=true
 PrivateTmp=true
