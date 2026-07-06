@@ -3697,7 +3697,7 @@ Widget loadPowered(BuildContext context) {
     cursor: SystemMouseCursors.click,
     child: GestureDetector(
       onTap: () {
-        launchUrl(Uri.parse('https://rustdesk.com'));
+        launchUrl(Uri.parse('https://www.armilen.ru'));
       },
       child: Opacity(
           opacity: 0.5,
@@ -4020,18 +4020,16 @@ void earlyAssert() {
 
 void checkUpdate() {
   if (!isWeb) {
-    if (!bind.isCustomClient()) {
-      platformFFI.registerEventHandler(
-          kCheckSoftwareUpdateFinish, kCheckSoftwareUpdateFinish,
-          (Map<String, dynamic> evt) async {
-        if (evt['url'] is String) {
-          stateGlobal.updateUrl.value = evt['url'];
-        }
-      });
-      Timer(const Duration(seconds: 1), () async {
-        bind.mainGetSoftwareUpdateUrl();
-      });
-    }
+    platformFFI.registerEventHandler(
+        kCheckSoftwareUpdateFinish, kCheckSoftwareUpdateFinish,
+        (Map<String, dynamic> evt) async {
+      if (evt['url'] is String) {
+        stateGlobal.updateUrl.value = evt['url'];
+      }
+    });
+    Timer(const Duration(seconds: 1), () async {
+      bind.mainGetSoftwareUpdateUrl();
+    });
   }
 }
 

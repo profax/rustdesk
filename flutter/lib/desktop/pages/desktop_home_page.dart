@@ -430,21 +430,18 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   Widget buildHelpCards(String updateUrl) {
-    if (!bind.isCustomClient() &&
-        updateUrl.isNotEmpty &&
-        !isCardClosed &&
-        bind.mainUriPrefixSync().contains('rustdesk')) {
-      final isToUpdate = (isWindows || isMacOS) && bind.mainIsInstalled();
+    if (updateUrl.isNotEmpty && !isCardClosed) {
+      // Armilen: always link out instead of calling handleUpdate()'s in-app
+      // downloader. That path resolves the file via the native
+      // 'download-file-$version' key, which assumes upstream's rustdesk-*
+      // release asset naming and isn't wired up for our own release/download
+      // scheme. Until it is, sending users to the download page is correct.
+      const isToUpdate = false;
       String btnText = isToUpdate ? 'Update' : 'Download';
       GestureTapCallback onPressed = () async {
-        final Uri url = Uri.parse('https://rustdesk.com/download');
+        final Uri url = Uri.parse(updateUrl);
         await launchUrl(url);
       };
-      if (isToUpdate) {
-        onPressed = () {
-          handleUpdate(updateUrl);
-        };
-      }
       return buildInstallCard(
           "Status",
           "${translate("new-version-of-{${bind.mainGetAppNameSync()}}-tip")} (${bind.mainGetNewVersion()}).",

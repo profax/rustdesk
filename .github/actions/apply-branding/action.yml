@@ -45,3 +45,23 @@ runs:
         # (ключ подписи RustDesk нам недоступен): убирает "Logout (<user>)" в UI.
         perl -0pi -e 's/pub fn is_disable_account\(\) -> bool \{\n    is_some_hard_opton\("disable-account"\)\n\}/pub fn is_disable_account() -> bool {\n    true \/\/ Armilen: свой аккаунт RustDesk не используем\n}/' "$cfg"
         grep -A1 -F "$marker" "$cfg"
+
+    - name: Point version-check URL at armilen.ru in libs/hbb_common
+      shell: bash
+      run: |
+        set -euo pipefail
+        cfg="libs/hbb_common/src/lib.rs"
+        if grep -qF 'const URL: &str = "https://www.armilen.ru/api/version-check";' "$cfg"; then
+          echo "Branding already applied, skipping"
+          exit 0
+        fi
+        if ! grep -qF 'const URL: &str = "https://api.rustdesk.com/version/latest";' "$cfg"; then
+          echo "::error file=$cfg::version-check URL pattern not found, upstream changed the line; update this action"
+          exit 1
+        fi
+        # Свой апдейт-чек: api.rustdesk.com/version/latest заменяем на наш
+        # эндпойнт (armilen-site server/lead-server.mjs), чтобы кастомные
+        # клиенты узнавали о новых сборках, а не молчали или не дёргали офф. апстрим.
+        sed -i.bak 's#const URL: &str = "https://api.rustdesk.com/version/latest";#const URL: \&str = "https://www.armilen.ru/api/version-check";#' "$cfg"
+        rm -f "$cfg.bak"
+        grep -F 'const URL: &str' "$cfg"
