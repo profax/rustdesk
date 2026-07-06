@@ -562,13 +562,15 @@ pub fn set_share_rdp(_enable: bool) {
 
 #[inline]
 pub fn is_installed_lower_version() -> bool {
-    #[cfg(not(windows))]
-    return false;
-    #[cfg(windows)]
-    {
-        let b = crate::platform::windows::get_reg("BuildDate");
-        return crate::BUILD_DATE.cmp(&b).is_gt();
-    }
+    // Armilen: upstream compares raw compile timestamps (BUILD_DATE vs the
+    // registry value written at install time), not version numbers. Every
+    // nightly rebuild gets a fresh timestamp even when nothing meaningfully
+    // changed (same Cargo.toml version), so this always claimed the installed
+    // copy was "lower" and offered to reinstall - a false-positive loop.
+    // Real update notifications already go through the online version-check
+    // (see api/version-check, compares actual Cargo.toml version), so this
+    // redundant local self-vs-installed nag is just disabled.
+    false
 }
 
 #[inline]

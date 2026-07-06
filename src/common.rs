@@ -1069,16 +1069,11 @@ fn get_api_server_(api: String, custom: String) -> String {
     if !api.is_empty() {
         return api.to_owned();
     }
-    let s0 = get_custom_rendezvous_server(custom);
-    if !s0.is_empty() {
-        let s = crate::increase_port(&s0, -2);
-        if s == s0 {
-            return format!("http://{}:{}", s, config::RENDEZVOUS_PORT - 2);
-        } else {
-            return format!("http://{}", s);
-        }
-    }
-    "https://admin.rustdesk.com".to_owned()
+    // Armilen: derive-from-rendezvous-server-port math below assumes rustdesk-api's
+    // gin port (RENDEZVOUS_PORT-2, internal-only per docs/server-infrastructure.md)
+    // is reachable directly, which it isn't - only https://desk.armilen.ru (Caddy
+    // reverse_proxy) is exposed. Skip the derivation, go straight to our own server.
+    "https://desk.armilen.ru".to_owned()
 }
 
 #[inline]
