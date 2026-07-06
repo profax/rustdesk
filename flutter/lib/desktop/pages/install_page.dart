@@ -187,9 +187,9 @@ class _InstallPageBodyState extends State<_InstallPageBody>
                           InkWell(
                             hoverColor: Colors.transparent,
                             onTap: () => launchUrlString(
-                                'https://www.armilen.ru/privacy'),
+                                'https://www.armilen.ru/remote-privacy'),
                             child: Tooltip(
-                              message: 'https://www.armilen.ru/privacy',
+                              message: 'https://www.armilen.ru/remote-privacy',
                               child: Row(children: [
                                 Icon(Icons.launch_outlined, size: 16)
                                     .marginOnly(right: 5),

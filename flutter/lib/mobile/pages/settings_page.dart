@@ -985,7 +985,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
             SettingsTile(
               title: Text(translate("Privacy Statement")),
               onPressed: (context) =>
-                  launchUrlString('https://www.armilen.ru/privacy'),
+                  launchUrlString('https://www.armilen.ru/remote-privacy'),
               leading: Icon(Icons.privacy_tip),
             )
           ],
