@@ -2268,3 +2268,51 @@ jobs:
           tag_name: ${{ env.TAG_NAME }}
           files: |
             flutter/build/rustdesk-${{ env.VERSION }}-${{ env.RELEASE_NAME }}.tar.gz
+
+  # Armilen: уведомление в Telegram, что кастомная сборка ArmilenRemote готова,
+  # с кнопкой "Обновить сайт". needs перечисляет только 4 джоба, чьи артефакты
+  # реально потребляет armilen-site/scripts/deploy-clients.js (windows exe,
+  # macOS dmg, Linux AppImage, Android universal apk) - не весь список джобов
+  # workflow (ios/sciter/flatpak/web не деплоятся на сайт и падают по причинам,
+  # не связанным с этими 4 сборками, - незачем блокировать на них уведомление).
+  # Секреты и чат/топик - те же TG_BOT_TOKEN/REMOTE_CODE_CHAT_ID/
+  # REMOTE_CODE_THREAD_ID, что и коды /remote-ios в armilen-site
+  # (server/send-remote-code.mjs), нужно завести как GH Actions secrets здесь.
+  # callback_data кнопки обрабатывает handleTelegramUpdate() в
+  # armilen-site/server/telegram.mjs через уже существующий вебхук.
+  notify-armilen-build-ready:
+    name: Notify Telegram (ArmilenRemote build ready)
+    # inputs.upload-artifact, не push/ref: этот reusable workflow вызывается и
+    # обычным push-CI (flutter-ci.yml, upload-artifact: false - ничего не
+    # публикует в релиз nightly) и flutter-nightly.yml (upload-artifact: true -
+    # реально публикует). Уведомлять "жми, чтобы обновить сайт" имеет смысл
+    # только когда что-то новое действительно ушло в релиз.
+    if: inputs.upload-artifact == true
+    needs:
+      - build-for-windows-flutter
+      - build-for-macOS
+      - build-appimage
+      - build-rustdesk-android-universal
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram notification with deploy button
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.REMOTE_CODE_CHAT_ID }}
+          TG_THREAD_ID: ${{ secrets.REMOTE_CODE_THREAD_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TG_BOT_TOKEN:-}" ] || [ -z "${TG_CHAT_ID:-}" ]; then
+            echo "TG_BOT_TOKEN/REMOTE_CODE_CHAT_ID secret not set, skipping notification"
+            exit 0
+          fi
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          PAYLOAD=$(jq -n \
+            --arg chat_id "$TG_CHAT_ID" \
+            --arg text "🖥 Кастомная сборка ArmilenRemote ${VERSION} готова (${SHORT_SHA}). Обновить файлы на сайте?" \
+            --arg thread_id "${TG_THREAD_ID:-}" \
+            '{chat_id: $chat_id, text: $text, reply_markup: {inline_keyboard: [[{text: "🚀 Обновить сайт", callback_data: "deploy:rustdesk_clients"}]]}}
+             + (if $thread_id != "" then {message_thread_id: ($thread_id | tonumber)} else {} end)')
+          curl -sS -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
