@@ -46,6 +46,35 @@ runs:
         perl -0pi -e 's/pub fn is_disable_account\(\) -> bool \{\n    is_some_hard_opton\("disable-account"\)\n\}/pub fn is_disable_account() -> bool {\n    true \/\/ Armilen: свой аккаунт RustDesk не используем\n}/' "$cfg"
         grep -A1 -F "$marker" "$cfg"
 
+    - name: Default ID/relay server to armilen.ru in libs/hbb_common
+      shell: bash
+      run: |
+        set -euo pipefail
+        cfg="libs/hbb_common/src/config.rs"
+        if grep -qF 'RENDEZVOUS_SERVERS: &[&str] = &["www.armilen.ru"]' "$cfg"; then
+          echo "Branding already applied, skipping"
+          exit 0
+        fi
+        if ! grep -qF 'RENDEZVOUS_SERVERS: &[&str] = &["rs-ny.rustdesk.com"]' "$cfg"; then
+          echo "::error file=$cfg::RENDEZVOUS_SERVERS pattern not found, upstream changed the line; update this action"
+          exit 1
+        fi
+        if ! grep -qF 'RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";' "$cfg"; then
+          echo "::error file=$cfg::RS_PUB_KEY pattern not found, upstream changed the line; update this action"
+          exit 1
+        fi
+        # Без этого клиент по умолчанию соединяется через публичный
+        # rs-ny.rustdesk.com (чужой сервер, платный трафик и чужая точка
+        # доверия), а UI показывает "настройте собственный сервер" - хотя
+        # свой ID/relay (hbbs/hbbr) у нас уже поднят. Значения те же, что
+        # даём вручную для официального iOS-клиента (src/content/guides/
+        # remote-ios.yaml в armilen-site).
+        sed -i.bak 's/RENDEZVOUS_SERVERS: &\[&str\] = &\["rs-ny\.rustdesk\.com"\]/RENDEZVOUS_SERVERS: \&[\&str] = \&["www.armilen.ru"]/' "$cfg"
+        sed -i.bak 's#RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";#RS_PUB_KEY: \&str = "GYxvuB12rp2WdQoykP0y2Whrw9sD7hpPJkTlp8LS7C0=";#' "$cfg"
+        rm -f "$cfg.bak"
+        grep -F 'RENDEZVOUS_SERVERS: &[&str]' "$cfg"
+        grep -F 'RS_PUB_KEY: &str' "$cfg"
+
     - name: Point version-check URL at armilen.ru in libs/hbb_common
       shell: bash
       run: |
