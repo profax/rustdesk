@@ -120,6 +120,13 @@ async function main() {
 	// --- Windows ---
 	await writeIco("tile-dark", [16, 32, 48, 64, 128, 256],
 		out("flutter", "windows", "runner", "resources", "app_icon.ico"));
+	// res/icon.ico: embedded by build.rs (winres) as the Windows resource icon
+	// of the core Rust exe itself (Explorer/taskbar/installer icon before the
+	// app ever runs) - separate from app_icon.ico above, which only brands the
+	// Flutter Windows *runner* shown once the app is actually running. Missing
+	// this one is why the installer/downloaded .exe kept showing the upstream
+	// RustDesk icon even though the running app was already correctly branded.
+	await writeIco("tile-dark", [16, 32, 48, 64, 128, 256], out("res", "icon.ico"));
 
 	// --- macOS (project references AppIcon.icns, not an .appiconset) ---
 	await writeIcns("tile-macos", out("flutter", "macos", "Runner", "AppIcon.icns"));

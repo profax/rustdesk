@@ -7,8 +7,8 @@ cd flutter; flutter pub get; cd -
 ./build.py --flutter
 rm rustdesk-$VERSION.dmg
 # security find-identity -v
-codesign --force --options runtime -s $MACOS_CODESIGN_IDENTITY --deep --strict "./flutter/build/macos/Build/Products/Release/Armilen Remote.app" -vvv
-create-dmg --icon "Armilen Remote.app" 200 190 --hide-extension "Armilen Remote.app" --window-size 800 400 --app-drop-link 600 185 rustdesk-$VERSION.dmg "./flutter/build/macos/Build/Products/Release/Armilen Remote.app"
+codesign --force --options runtime -s $MACOS_CODESIGN_IDENTITY --deep --strict "./flutter/build/macos/Build/Products/Release/ArmilenRemote.app" -vvv
+create-dmg --icon "ArmilenRemote.app" 200 190 --hide-extension "ArmilenRemote.app" --window-size 800 400 --app-drop-link 600 185 rustdesk-$VERSION.dmg "./flutter/build/macos/Build/Products/Release/ArmilenRemote.app"
 codesign --force --options runtime -s $MACOS_CODESIGN_IDENTITY --deep --strict rustdesk-$VERSION.dmg -vvv
 # notarize the rustdesk-${{ env.VERSION }}.dmg
 rcodesign notary-submit --api-key-path ~/.p12/api-key.json  --staple rustdesk-$VERSION.dmg
