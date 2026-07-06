@@ -64,6 +64,19 @@ const git = (...args) => run("git", args);
 const tryGit = (...args) => tryRun("git", args);
 const hasGh = () => tryRun("gh", ["--version"]).ok;
 
+// gh resolves "the current repo" from git remotes when --repo isn't given,
+// and picks the wrong one whenever both FORK_REMOTE and UPSTREAM_REMOTE are
+// configured (as ensureUpstreamRemote() below guarantees) - it favors a
+// remote literally named "upstream". Every gh call here must pass --repo
+// explicitly, derived from FORK_REMOTE's own URL, or PR creation and build
+// dispatch silently target rustdesk/rustdesk instead of our fork.
+function forkRepoSlug() {
+	const url = tryGit("remote", "get-url", FORK_REMOTE).out || "";
+	const m = /github\.com[:/]([^/]+\/[^/.]+)(?:\.git)?$/.exec(url);
+	if (!m) throw new Error(`could not derive owner/repo from ${FORK_REMOTE} url: ${url}`);
+	return m[1];
+}
+
 const semver = (t) => t.split(".").map(Number);
 function newerStable(a, b) {
 	const [a1, a2, a3] = semver(a);
@@ -203,8 +216,10 @@ async function main() {
 	git("push", "--force-with-lease", FORK_REMOTE, branch);
 
 	if (hasGh()) {
+		const repo = forkRepoSlug();
 		const pr = tryRun("gh", [
 			"pr", "create",
+			"--repo", repo,
 			"--base", BASE_BRANCH,
 			"--head", branch,
 			"--title", `Sync upstream RustDesk ${latest}`,
@@ -219,13 +234,21 @@ async function main() {
 	}
 
 	if (TRIGGER_BUILD && hasGh()) {
+		const repo = forkRepoSlug();
+		// upload-artifact: false — this build is for PR review (does it still
+		// compile/pass CI on all platforms?), not a publish. Merging to
+		// BASE_BRANCH is what actually ships: the next real nightly run from
+		// there uploads for real. Publishing PR-branch builds straight to the
+		// same "nightly" release that deploy-clients.js serves to real users
+		// would let unreviewed upstream code reach production before anyone
+		// looked at the diff - defeats the whole point of the PR gate.
 		const wf = tryRun("gh", [
 			"workflow", "run", GH_WORKFLOW,
+			"--repo", repo,
 			"--ref", branch,
-			"-f", "upload-artifact=true",
-			"-f", "upload-tag=nightly",
+			"-f", "upload-artifact=false",
 		]);
-		log(wf.ok ? `build dispatched on ${branch}` : `workflow dispatch failed: ${wf.err || wf.out}`);
+		log(wf.ok ? `CI build dispatched on ${branch} (review-only, not published)` : `workflow dispatch failed: ${wf.err || wf.out}`);
 	} else if (TRIGGER_BUILD) {
 		log(`gh CLI not found: dispatch ${GH_WORKFLOW} on ${branch} manually`);
 	}
