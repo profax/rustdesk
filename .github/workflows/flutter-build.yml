@@ -2298,21 +2298,25 @@ jobs:
       - name: Send Telegram notification
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.REMOTE_CODE_CHAT_ID }}
-          TG_THREAD_ID: ${{ secrets.REMOTE_CODE_THREAD_ID }}
+          TG_CHAT_ID: "1011573605"
+          TG_THREAD_ID: ""
         run: |
           set -euo pipefail
           if [ -z "${TG_BOT_TOKEN:-}" ] || [ -z "${TG_CHAT_ID:-}" ]; then
             echo "TG_BOT_TOKEN/REMOTE_CODE_CHAT_ID secret not set, skipping notification"
             exit 0
           fi
+          SERVER_URL=$(curl -sS -X POST "https://www.armilen.ru/api/version-check" -H "Content-Type: application/json" -d "{}" | jq -r ".url")
+          if [[ "$SERVER_URL" == *"/${VERSION}"* ]]; then
+            echo "Version already deployed"
+            exit 0
+          fi
           SHORT_SHA="${GITHUB_SHA:0:7}"
           PAYLOAD=$(jq -n \
             --arg chat_id "$TG_CHAT_ID" \
-            --arg text "🖥 Кастомная сборка ArmilenRemote ${VERSION} готова (${SHORT_SHA}). Обновить сайт можно тумблером в Sveltia CMS." \
-            --arg thread_id "${TG_THREAD_ID:-}" \
-            '{chat_id: $chat_id, text: $text}
-             + (if $thread_id != "" then {message_thread_id: ($thread_id | tonumber)} else {} end)')
+            --arg text "🖥 Новая сборка ArmilenRemote ${VERSION} (${SHORT_SHA}) готова. Нажмите кнопку ниже для деплоя на сервер." \
+            --arg cb "deploy:rustdesk:${SHORT_SHA}" \
+            '{chat_id: $chat_id, text: $text, parse_mode: "HTML", reply_markup: {inline_keyboard: [[{text: "🚀 Деплой на сервер", callback_data: $cb}]]}}')
           curl -sS -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
