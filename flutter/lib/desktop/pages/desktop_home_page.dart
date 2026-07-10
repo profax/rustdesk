@@ -437,8 +437,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         await launchUrl(url);
       };
       return buildInstallCard(
-          "Status",
-          "${translate("new-version-of-{${bind.mainGetAppNameSync()}}-tip")} (${bind.mainGetNewVersion()}).",
+          "",
+          "${translate("new-version-of-{${bind.mainGetAppNameSync()}}-tip")} (${bind.mainGetNewVersion()})",
           btnText,
           onPressed,
           closeButton: true,
