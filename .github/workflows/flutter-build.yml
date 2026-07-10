@@ -569,6 +569,10 @@ jobs:
     name: build rustdesk ios ipa
     runs-on: ${{ matrix.job.os }}
     needs: [generate-bridge]
+    env:
+      CARGO_BUILD_JOBS: 2
+      VCPKG_MAX_CONCURRENCY: 2
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
     strategy:
       fail-fast: false
       matrix:
@@ -699,6 +703,10 @@ jobs:
     name: ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
     needs: [generate-bridge]
+    env:
+      CARGO_BUILD_JOBS: 2
+      VCPKG_MAX_CONCURRENCY: 2
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
     strategy:
       fail-fast: false
       matrix:
