@@ -22,7 +22,7 @@ graph TD
     A[Upstream RustDesk] -- Новые стабильные релизы --> B[Авто-синхронизация VPS]
     B -- Создает ветку и PR --> C[GitHub Actions: flutter-build.yml]
     C -- Собирает exe, dmg, AppImage, apk --> D[GitHub Releases: nightly]
-    E[Sveltia CMS / commit] -- trigger: true --> F[deploy-clients.js]
+    E[Администратор] -- Ручной запуск --> F[deploy-clients.js]
     F -- Скачивает свежую версию из nightly --> G[Сайт www.armilen.ru]
 ```
 
@@ -42,13 +42,11 @@ graph TD
 * По окончании сборки workflow отправляет уведомление в Telegram-канал администрирования со специальным вебхуком для запуска деплоя.
 
 ### 3. Развёртывание на сайт (`deploy-clients.js`)
-Скрипт деплоя находится в репозитории сайта (`armilen-site/scripts/deploy-clients.js`) и может быть запущен двумя способами:
-1. **Через CMS**: Переключением тумблера «Обновить клиентов RustDesk» в Sveltia CMS (файл `ops/rustdesk-deploy-trigger.yaml` -> `trigger: true`), что запускает экшен `rustdesk-deploy-trigger.yml`.
-2. **Вручную на VPS**:
-   ```sh
-   cd /opt/armilen-site
-   node scripts/deploy-clients.js
-   ```
+Скрипт деплоя находится в репозитории сайта (`armilen-site/scripts/deploy-clients.js`) и запускается вручную на VPS для загрузки свежих клиентов с GitHub в статический каталог сайта:
+```sh
+cd /opt/armilen-site
+node scripts/deploy-clients.js
+```
 
 Скрипт работает по принципу **Blue-green deployment**: скачивает все бинарники во временные файлы `.tmp` рядом с рабочими, проверяет их размеры, и только при 100% успехе всех загрузок атомарно заменяет файлы в `/srv/www.armilen.ru/downloads/`. Также скрипт автоматически обновляет номер версии в базе данных `db.sqlite3` сервера `rustdesk-api` для информирования установленных клиентов.
 
