@@ -2297,7 +2297,7 @@ jobs:
     steps:
       - name: Send Telegram notification
         env:
-          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_BOT_TOKEN: ${{ secrets.TG_ADMIN_BOT_TOKEN }}
           TG_CHAT_ID: "1011573605"
           TG_THREAD_ID: ""
         run: |
