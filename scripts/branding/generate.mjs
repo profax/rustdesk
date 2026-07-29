@@ -116,6 +116,23 @@ async function androidSet(name, baseline, file) {
 	}
 }
 
+// @color/ic_launcher_background, kept equal to tile-dark.svg's field colour.
+async function writeAndroidBackgroundColor() {
+	const tile = (await svg("tile-dark")).toString();
+	const field = tile.match(/<rect[^>]*\sfill="(#[0-9a-fA-F]{6})"/)?.[1];
+	if (!field) throw new Error("tile-dark.svg: cannot read the field colour off its <rect>");
+	const dest = out("flutter", "android", "app", "src", "main", "res", "values", "ic_launcher_background.xml");
+	await writeFile(
+		dest,
+		`<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">${field}</color>
+</resources>
+`
+	);
+	console.log(`tile-dark.svg -> ${path.relative(ROOT, dest)} (${field})`);
+}
+
 async function main() {
 	// --- Windows ---
 	await writeIco("tile-dark", [16, 32, 48, 64, 128, 256],
@@ -136,6 +153,10 @@ async function main() {
 	await androidSet("tile-round", 48, "ic_launcher_round.png"); // round mask
 	await androidSet("foreground", 108, "ic_launcher_foreground.png"); // adaptive fg + monochrome
 	await androidSet("glyph-mono", 24, "ic_stat_logo.png"); // status-bar notification
+	// The adaptive icon's background is a colour resource, not a bitmap, so it
+	// cannot be rasterized like the layers above - derive it from the tile so it
+	// can never drift away from the field colour the other icons are drawn on.
+	await writeAndroidBackgroundColor();
 
 	// --- Flutter in-app assets (bundled via `- assets/` in pubspec) ---
 	await writePng("logo-light", 240, out("flutter", "assets", "logo_light.png"));

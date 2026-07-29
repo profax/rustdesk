@@ -1,15 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- Armilen Remote app tile: green gradient rounded square (matches the
-       Telegram Workspace-group avatar), prompt glyph dark navy, cursor
-       white. Canonical launcher/app-icon variant. -->
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#22c55e"/>
-      <stop offset="1" stop-color="#15803d"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-  <g transform="translate(256,256) scale(0.62) translate(-290,-256)"
+  <!-- Armilen Remote app tile: the Telegram Workspace-group avatar
+       (armilen-site branding/telegram/workspace-group.svg) on a rounded
+       square. Flat green-700 field (site accent), prompt glyph dark navy,
+       cursor white, glyph at the avatar's 0.78 scale but optically centred.
+       Canonical launcher/app-icon variant.
+       The rx=96 rounding is load-bearing on Windows: .ico frames are drawn
+       as authored and nothing masks them, so a square source means square
+       corners in Explorer, on the taskbar and in the installer. -->
+  <rect width="512" height="512" rx="96" fill="#15803d"/>
+  <g transform="translate(256,256) scale(0.78) translate(-290,-256)"
      fill="none" stroke-width="72" stroke-linecap="round" stroke-linejoin="round">
     <path d="M120 140 L240 256 L120 372" stroke="#0f172a"/>
     <path d="M340 372 L460 372" stroke="#ffffff"/>
