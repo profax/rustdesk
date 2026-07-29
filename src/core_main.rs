@@ -124,7 +124,8 @@ pub fn core_main() -> Option<Vec<String>> {
         args.push("--install".to_owned());
         flutter_args.push("--install".to_string());
     }
-    if args.contains(&"--noinstall".to_string()) {
+    let _no_install = args.contains(&"--noinstall".to_string());
+    if _no_install {
         args.clear();
     }
     if args.len() > 0 {
@@ -181,6 +182,16 @@ pub fn core_main() -> Option<Vec<String>> {
     #[cfg(windows)]
     if !crate::platform::is_installed() && (_is_elevate || _is_run_as_system) {
         crate::platform::elevate_or_run_as_system(click_setup, _is_elevate, _is_run_as_system);
+        return None;
+    }
+    #[cfg(windows)]
+    if args.is_empty()
+        && !_no_install
+        && !_is_elevate
+        && !_is_run_as_system
+        && !config::is_disable_installation()
+        && upgrade_installed_copy_if_newer()
+    {
         return None;
     }
     #[cfg(all(feature = "flutter", feature = "plugin_framework"))]
@@ -906,6 +917,69 @@ fn is_root() -> bool {
     }
     #[allow(unreachable_code)]
     crate::platform::is_root()
+}
+
+/// Armilen: upgrade the installation in place when a newer build is launched
+/// beside it, and report whether that was started.
+///
+/// Downloading the new .exe by hand is the route that goes wrong. The Flutter
+/// runner's single-instance guard (flutter/windows/runner/main.cpp) looks up the
+/// main window by class + app name, finds the *running* old copy, refocuses it
+/// and exits - so the freshly downloaded binary appears to do nothing, and the
+/// user reports "the old version starts". Nor can they install over it: the app
+/// is already installed, so the install card is gone.
+///
+/// Doing the update here, before the Flutter runner is ever reached, matches
+/// what double-clicking a downloaded build is meant to mean. `--update` is
+/// upstream's own in-place updater (platform::update_me: stop the service, copy
+/// the new files over the installation, rewrite the uninstall registry keys,
+/// restart what was running), the same entry point the automatic updater in
+/// updater.rs drives. Elevation is required for writing under Program Files, and
+/// its UAC prompt doubles as the user's confirmation.
+///
+/// `--noinstall` opts out, exactly as it does for the `*install.exe` auto-install
+/// path, and running the installed copy itself never qualifies.
+#[cfg(windows)]
+fn upgrade_installed_copy_if_newer() -> bool {
+    use crate::platform::windows;
+
+    if !crate::platform::is_installed() {
+        return false;
+    }
+    let Ok(current_exe) = std::env::current_exe() else {
+        return false;
+    };
+    let (_, _, _, installed_exe) = windows::get_install_info();
+    if current_exe.to_string_lossy().to_lowercase() == installed_exe.to_lowercase() {
+        return false;
+    }
+    // Written by install_me()/update_me(); an install old enough to predate it
+    // reports nothing, and guessing is worse than leaving the app alone.
+    let installed_version = windows::get_reg("Version");
+    if installed_version.is_empty()
+        || hbb_common::get_version_number(crate::VERSION)
+            <= hbb_common::get_version_number(&installed_version)
+    {
+        return false;
+    }
+    log::info!(
+        "Version {} started next to installation {}, updating it in place",
+        crate::VERSION,
+        installed_version
+    );
+    match windows::elevate("--update") {
+        Ok(true) => true,
+        // The user dismissed the UAC prompt. Carry on booting normally so the
+        // decision to keep the old version stands.
+        Ok(false) => {
+            log::info!("Update was not elevated, continuing without updating");
+            false
+        }
+        Err(e) => {
+            log::error!("Failed to launch the update: {e}");
+            false
+        }
+    }
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos", test))]

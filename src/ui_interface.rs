@@ -565,12 +565,24 @@ pub fn is_installed_lower_version() -> bool {
     // Armilen: upstream compares raw compile timestamps (BUILD_DATE vs the
     // registry value written at install time), not version numbers. Every
     // nightly rebuild gets a fresh timestamp even when nothing meaningfully
-    // changed (same Cargo.toml version), so this always claimed the installed
-    // copy was "lower" and offered to reinstall - a false-positive loop.
-    // Real update notifications already go through the online version-check
-    // (see api/version-check, compares actual Cargo.toml version), so this
-    // redundant local self-vs-installed nag is just disabled.
-    false
+    // changed (same Cargo.toml version), so that test claimed the installed
+    // copy was "lower" after any rebuild - a false-positive loop, which is why
+    // this used to be hardcoded to `false`. Comparing version numbers keeps the
+    // check honest and restores the case it exists for: a newer binary was
+    // started next to an older installation, and the "Click to upgrade" card is
+    // the only route in. Without it the user has to uninstall the old copy
+    // before the installer UI reappears at all.
+    #[cfg(not(windows))]
+    return false;
+    #[cfg(windows)]
+    {
+        let installed = crate::platform::windows::get_reg("Version");
+        if installed.is_empty() {
+            return false;
+        }
+        hbb_common::get_version_number(crate::VERSION)
+            > hbb_common::get_version_number(&installed)
+    }
 }
 
 #[inline]
