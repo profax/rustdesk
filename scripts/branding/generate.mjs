@@ -179,6 +179,12 @@ async function main() {
 	await writeFile(out("res", "logo.svg"), await svg("tile-dark"));
 	await writeFile(out("res", "logo-header.svg"), await svg("logo-dark"));
 	console.log("tile-dark.svg -> res/logo.svg ; logo-dark.svg -> res/logo-header.svg");
+	// hicolor's scalable directory outranks the 256x256 bitmap in every icon
+	// theme, so leaving this one upstream put the RustDesk logo in the Linux
+	// app menu no matter what the .png next to it said. Installed as
+	// apps/rustdesk.svg by build.py, the rpm specs and the AppImage recipes.
+	await writeFile(out("res", "scalable.svg"), await svg("tile-dark"));
+	console.log("tile-dark.svg -> res/scalable.svg");
 }
 
 main().catch((err) => {
