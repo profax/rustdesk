@@ -33,6 +33,7 @@ pub fn core_main() -> Option<Vec<String>> {
         return None;
     }
     crate::load_custom_client();
+    default_allow_auto_update();
     #[cfg(windows)]
     if !crate::platform::windows::bootstrap() {
         // return None to terminate the process
@@ -917,6 +918,31 @@ fn is_root() -> bool {
     }
     #[allow(unreachable_code)]
     crate::platform::is_root()
+}
+
+/// Armilen: make upstream's opt-in auto-update the default.
+///
+/// A support tool is only useful on the build the technician expects, and
+/// upstream ships `allow-auto-update` off, so every machine stayed on whatever
+/// was installed until someone downloaded a new build by hand. Seeding
+/// DEFAULT_SETTINGS rather than special-casing the updater's own read keeps the
+/// "Auto update" checkbox in settings honest: it resolves the same option
+/// through the same lookup, so it shows checked, and unchecking it stores an
+/// explicit "N" in the user's config, which outranks this default
+/// (`get_or`: overwrite, then user config, then defaults).
+///
+/// `or_insert` rather than `insert` so a custom.txt, read just above by
+/// `load_custom_client()`, still wins if one is ever shipped.
+///
+/// The update itself stays conservative - it is upstream's own machinery, and
+/// `updater::check_update` runs once a day and refuses while any session is
+/// alive.
+fn default_allow_auto_update() {
+    config::DEFAULT_SETTINGS
+        .write()
+        .unwrap()
+        .entry(config::keys::OPTION_ALLOW_AUTO_UPDATE.to_owned())
+        .or_insert_with(|| "Y".to_owned());
 }
 
 /// Armilen: upgrade the installation in place when a newer build is launched
