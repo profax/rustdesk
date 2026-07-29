@@ -2433,3 +2433,23 @@ jobs:
           curl -sS -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD"
+
+      # Релиз nightly скользящий: сборка перезаписывает только те ассеты, что
+      # сама произвела, поэтому после смены версии файлы предыдущей остаются в
+      # нём навсегда. К 1.4.9 так накопилось 835 МБ мёртвых файлов 1.4.8, среди
+      # которых лежали и exe с dmg - на странице релиза не отличить, какой из
+      # них актуальный.
+      #
+      # Удаляем только ассеты с версией, отличной от текущей: такие не может
+      # выкладывать этот же прогон, поэтому гонки с ещё идущими джобами нет.
+      - name: Удалить ассеты прошлых версий
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view "${TAG_NAME}" --repo "${GITHUB_REPOSITORY}" --json assets \
+            --jq ".assets[] | select(.name | startswith(\"rustdesk-\") and (contains(\"${VERSION}\") | not)) | .name" \
+          | while read -r asset; do
+              echo "удаляю $asset"
+              gh release delete-asset "${TAG_NAME}" "$asset" --repo "${GITHUB_REPOSITORY}" --yes
+            done
