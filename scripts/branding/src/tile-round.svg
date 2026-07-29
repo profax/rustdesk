@@ -1,6 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- Round variant for Android ic_launcher_round (circular launcher masks). -->
-  <circle cx="256" cy="256" r="256" fill="#15803d"/>
+  <!-- Round variant for Android ic_launcher_round (circular launcher masks).
+       Same green-700 gradient as tile-dark.svg. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16a34a"/>
+      <stop offset="0.5" stop-color="#15803d"/>
+      <stop offset="1" stop-color="#166534"/>
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
   <g transform="translate(256,256) scale(0.78) translate(-290,-256)"
      fill="none" stroke-width="72" stroke-linecap="round" stroke-linejoin="round">
     <path d="M120 140 L240 256 L120 372" stroke="#0f172a"/>

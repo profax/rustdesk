@@ -116,11 +116,17 @@ async function androidSet(name, baseline, file) {
 	}
 }
 
-// @color/ic_launcher_background, kept equal to tile-dark.svg's field colour.
+// @color/ic_launcher_background. Android's adaptive-icon background layer takes
+// a flat colour, not the tile's gradient, so use the gradient's middle stop -
+// the base colour the other two are a step either side of.
 async function writeAndroidBackgroundColor() {
 	const tile = (await svg("tile-dark")).toString();
-	const field = tile.match(/<rect[^>]*\sfill="(#[0-9a-fA-F]{6})"/)?.[1];
-	if (!field) throw new Error("tile-dark.svg: cannot read the field colour off its <rect>");
+	const field = tile.match(/<stop[^>]*\soffset="0\.5"[^>]*\sstop-color="(#[0-9a-fA-F]{6})"/)?.[1];
+	if (!field) {
+		throw new Error(
+			"tile-dark.svg: no gradient stop at offset 0.5 to take the flat field colour from"
+		);
+	}
 	const dest = out("flutter", "android", "app", "src", "main", "res", "values", "ic_launcher_background.xml");
 	await writeFile(
 		dest,

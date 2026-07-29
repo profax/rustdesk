@@ -1,13 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <!-- Armilen Remote app tile: the Telegram Workspace-group avatar
        (armilen-site branding/telegram/workspace-group.svg) on a rounded
-       square. Flat green-700 field (site accent), prompt glyph dark navy,
-       cursor white, glyph at the avatar's 0.78 scale but optically centred.
-       Canonical launcher/app-icon variant.
+       square. Prompt glyph dark navy, cursor white, glyph at the avatar's
+       0.78 scale but optically centred. Canonical launcher/app-icon variant.
+
+       The field is a gradient built around green-700, the site accent: one
+       palette step lighter at the top, one darker at the bottom, so the tile
+       reads as that exact green while still catching light from above the way
+       a physical object does. Only palette steps, no invented colours. The
+       middle stop is the tile's base colour and the generator reads it for
+       @color/ic_launcher_background, which Android can only take flat.
+
        The rx=96 rounding is load-bearing on Windows: .ico frames are drawn
        as authored and nothing masks them, so a square source means square
        corners in Explorer, on the taskbar and in the installer. -->
-  <rect width="512" height="512" rx="96" fill="#15803d"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16a34a"/>
+      <stop offset="0.5" stop-color="#15803d"/>
+      <stop offset="1" stop-color="#166534"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
   <g transform="translate(256,256) scale(0.78) translate(-290,-256)"
      fill="none" stroke-width="72" stroke-linecap="round" stroke-linejoin="round">
     <path d="M120 140 L240 256 L120 372" stroke="#0f172a"/>
