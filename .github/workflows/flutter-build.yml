@@ -12,6 +12,10 @@ on:
       upload-tag:
         type: string
         default: "nightly"
+      full-matrix:
+        description: Собрать и цели, которые не выкладываются на сайт
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       upload-artifact:
@@ -20,6 +24,16 @@ on:
       upload-tag:
         type: string
         default: "nightly"
+      # Armilen: на сайт уезжают четыре файла (x86_64 exe, universal dmg,
+      # x86_64 AppImage, universal apk), а матрица досталась от апстрима
+      # целиком. Больше половины времени раннеров уходило на цели, которые
+      # никто не скачивает, и каждая из них добавляла свой шанс уронить
+      # сборку - при том что красный крест должен означать поломку того, что
+      # мы отдаём людям. Здесь они выключены по умолчанию и включаются
+      # вручную или для сборки по тегу.
+      full-matrix:
+        type: boolean
+        default: false
 
 # NOTE: F-Droid builder script 'flutter/build_fdroid.sh' reads environment
 # variables from this workflow!
@@ -81,10 +95,12 @@ jobs:
               target: windows-2022,
               platform: x64,
             }
-          - {
-              target: windows-11-arm,
-              platform: ARM64,
-            }
+          # Armilen: единственным потребителем ARM64-артефакта была ветка
+          # aarch64-pc-windows-msvc ниже, она отключена.
+          # - {
+          #     target: windows-11-arm,
+          #     platform: ARM64,
+          #   }
     with:
       upload-artifact: ${{ inputs.upload-artifact }}
       target: ${{ matrix.job.target }}
@@ -110,16 +126,28 @@ jobs:
               vcpkg-triplet: x64-windows-static,
               build-args: "--vram",
             }
-          - {
-              target: aarch64-pc-windows-msvc,
-              os: windows-11-arm,
-              arch: aarch64,
-              flutter-arch: arm64,
-              vcpkg-triplet: arm64-windows-static,
-              # vram is x86/x64-only (NVENC needs CUDA, Intel MediaSDK needs __rdtsc);
-              # no NV/Intel/AMD hardware exists on Windows-on-ARM, so vram stays disabled here.
-              build-args: "",
-            }
+          # Armilen: Windows on ARM собираться перестал. Шаг «Build msi» падает
+          # на ARM-раннере нехваткой памяти под precompiled header
+          # (C3859/C1076 в res/msi/CustomActions), после чего пропускается
+          # публикация, вся матрица считается упавшей и вместе с ней
+          # пропускается notify-armilen-build-ready. Апстрим при этом зелёный,
+          # то есть чинить у себя нечего: сбой плавающий, зависит от памяти
+          # раннера.
+          #
+          # Платить за это регулярно красной сборкой не за что: Windows 11 on
+          # ARM запускает x64-сборку через встроенную эмуляцию, без единого
+          # действия от пользователя, и на сайт мы ARM-сборку не выкладываем.
+          # Раскомментировать, если появится причина выкладывать её отдельно.
+          # - {
+          #     target: aarch64-pc-windows-msvc,
+          #     os: windows-11-arm,
+          #     arch: aarch64,
+          #     flutter-arch: arm64,
+          #     vcpkg-triplet: arm64-windows-static,
+          #     # vram is x86/x64-only (NVENC needs CUDA, Intel MediaSDK needs __rdtsc);
+          #     # no NV/Intel/AMD hardware exists on Windows-on-ARM, so vram stays disabled here.
+          #     build-args: "",
+          #   }
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
@@ -403,6 +431,8 @@ jobs:
 
   # The fallback for the flutter version, we use Sciter for 32bit Windows.
   build-for-windows-sciter:
+    # Armilen: Sciter UI апстрим объявил deprecated, мы его не выкладываем.
+    if: ${{ inputs.full-matrix }}
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
     # Temporarily disable this action due to additional test is needed.
@@ -565,7 +595,8 @@ jobs:
             ./SignOutput/rustdesk-*.exe
 
   build-rustdesk-ios:
-    if: ${{ inputs.upload-artifact }}
+    # Armilen: ipa никуда не публикуется, на iOS отдельная инструкция /remote-ios.
+    if: ${{ inputs.upload-artifact && inputs.full-matrix }}
     name: build rustdesk ios ipa
     runs-on: ${{ matrix.job.os }}
     needs: [generate-bridge]
@@ -932,13 +963,80 @@ jobs:
           files: |
             rustdesk*-${{ matrix.job.arch }}.dmg
 
+  # Armilen: один dmg на обе архитектуры Mac вместо выбора между Intel и Apple
+  # Silicon на странице загрузки. Отдельным джобом, а не внутри build-for-macOS:
+  # тот собирает по одной архитектуре на разных раннерах и склеивать ему нечего.
+  # Джоб аддитивный - если склейка сломается, обе поарочные сборки всё равно
+  # опубликованы своими джобами, и выкладка на сайт откатится на x86_64
+  # (см. matcher macos в armilen-site/scripts/deploy-clients.js).
+  build-macos-universal:
+    name: macos universal dmg
+    needs: [build-for-macOS]
+    if: ${{ inputs.upload-artifact }}
+    runs-on: macos-14
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Download x86_64 dmg
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: rustdesk-unsigned-macos-x86_64
+          path: ./dmg-x86_64/
+
+      - name: Download aarch64 dmg
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: rustdesk-unsigned-macos-aarch64
+          path: ./dmg-aarch64/
+
+      - name: Extract both app bundles
+        run: |
+          set -euo pipefail
+          # Артефактом уезжает dmg, а не сам бандл: .app это дерево с симлинками
+          # внутри фреймворков, и upload-artifact их разворачивает.
+          for arch in x86_64 aarch64; do
+            dmg=$(ls ./dmg-$arch/*.dmg)
+            mnt=$(mktemp -d)
+            hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt"
+            cp -R "$mnt/ArmilenRemote.app" "./ArmilenRemote-$arch.app"
+            hdiutil detach "$mnt"
+          done
+
+      - name: Merge into a universal bundle
+        run: |
+          scripts/macos-universal.sh \
+            ./ArmilenRemote-x86_64.app \
+            ./ArmilenRemote-aarch64.app \
+            ./ArmilenRemote.app
+
+      - name: Create universal dmg
+        run: |
+          set -euo pipefail
+          brew install create-dmg
+          CREATE_DMG="$(readlink -f "$(command -v create-dmg)")"
+          sed -i -e 's/MAXIMUM_UNMOUNTING_ATTEMPTS=3/MAXIMUM_UNMOUNTING_ATTEMPTS=7/' "$CREATE_DMG"
+          create-dmg --icon "ArmilenRemote.app" 200 190 --hide-extension "ArmilenRemote.app" \
+            --window-size 800 400 --app-drop-link 600 185 \
+            rustdesk-${{ env.VERSION }}-universal.dmg ./ArmilenRemote.app
+
+      - name: Publish universal dmg
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
+        with:
+          prerelease: true
+          tag_name: ${{ env.TAG_NAME }}
+          files: rustdesk-${{ env.VERSION }}-universal.dmg
+
   publish_unsigned:
     needs:
       - build-for-macOS
       - build-for-windows-flutter
       - build-for-windows-sciter
     runs-on: ubuntu-latest
-    if: ${{ inputs.upload-artifact }}
+    # Armilen: собирает архив неподписанных сборок для внешнего подписания,
+    # которым мы не пользуемся; вдобавок ждёт Sciter-ветку Windows. Явное
+    # выключение вместо молчаливого пропуска по недостижимому needs.
+    if: ${{ inputs.upload-artifact && inputs.full-matrix }}
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -1490,14 +1588,16 @@ jobs:
               deb_arch: amd64,
               vcpkg-triplet: x64-linux,
             }
-          - {
-              arch: aarch64,
-              target: aarch64-unknown-linux-gnu,
-              distro: ubuntu18.04,
-              on: ubuntu-22.04-arm,
-              deb_arch: arm64,
-              vcpkg-triplet: arm64-linux,
-            }
+          # Armilen: на сайте только x86_64 AppImage. ARM-сборку Linux мы не
+          # публикуем, а стоит она получаса раннера.
+          # - {
+          #     arch: aarch64,
+          #     target: aarch64-unknown-linux-gnu,
+          #     distro: ubuntu18.04,
+          #     on: ubuntu-22.04-arm,
+          #     deb_arch: arm64,
+          #     vcpkg-triplet: arm64-linux,
+          #   }
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
@@ -1822,7 +1922,9 @@ jobs:
             res/rustdesk-${{ env.VERSION }}*.zst
 
   build-rustdesk-linux-sciter:
-    if: ${{ inputs.upload-artifact }}
+    # Armilen: самая долгая ветка всей матрицы (armv7 около часа) ради
+    # deprecated-интерфейса, которого нет ни в одной нашей сборке.
+    if: ${{ inputs.upload-artifact && inputs.full-matrix }}
     runs-on: ${{ matrix.job.on }}
     name: build-rustdesk-linux-sciter ${{ matrix.job.target }}
     strategy:
@@ -2069,7 +2171,8 @@ jobs:
       matrix:
         job:
           - { target: x86_64-unknown-linux-gnu, arch: x86_64 }
-          - { target: aarch64-unknown-linux-gnu, arch: aarch64 }
+          # Armilen: собирать нечего, ARM-ветка build-rustdesk-linux отключена.
+          # - { target: aarch64-unknown-linux-gnu, arch: aarch64 }
     steps:
       - name: Checkout source code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -2119,7 +2222,9 @@ jobs:
       - build-rustdesk-linux
       - build-rustdesk-linux-sciter
     runs-on: ${{ matrix.job.on }}
-    if: ${{ inputs.upload-artifact }}
+    # Armilen: на сайте лежит AppImage, flatpak мы не публикуем. Ещё и зависит
+    # от build-rustdesk-linux-sciter, который выключен вместе с остальным Sciter.
+    if: ${{ inputs.upload-artifact && inputs.full-matrix }}
     strategy:
       fail-fast: false
       matrix:
@@ -2298,7 +2403,7 @@ jobs:
     if: inputs.upload-artifact == true
     needs:
       - build-for-windows-flutter
-      - build-for-macOS
+      - build-macos-universal
       - build-appimage
       - build-rustdesk-android-universal
     runs-on: ubuntu-latest

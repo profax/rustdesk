@@ -16,3 +16,6 @@ jobs:
     with:
       upload-artifact: true
       upload-tag: ${{ github.ref_name }}
+      # Сборка по тегу это именованный релиз, а не рабочая выкладка: собираем
+      # всё, включая цели, которые на сайт не уезжают.
+      full-matrix: true
