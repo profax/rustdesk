@@ -251,17 +251,28 @@ class MyTheme {
   MyTheme._();
 
   static const Color grayBg = Color(0xFFEFEFF2);
-  static const Color accent = Color(0xFF15803D);
+  // Armilen: the two greens are www.armilen.ru's --accent, verbatim - green-700
+  // on light surfaces, green-500 on dark ones. Site light theme deliberately
+  // avoids green-500 because it only reaches 2.25:1 on white, so pick by theme
+  // rather than reaching for whichever one is nearer.
+  static const Color accent = Color(0xFF15803D); // green-700
+  static const Color accentBright = Color(0xFF22C55E); // green-500
   static const Color accent50 = Color(0x7715803D);
   static const Color accent80 = Color(0xAA15803D);
   static const Color canvasColor = Color(0xFF212121);
   static const Color border = Color(0xFFCCCCCC);
-  static const Color idColor = Color(0xFF22C55E);
+  static const Color idColor = accentBright;
   static const Color darkGray = Color.fromARGB(255, 148, 148, 148);
   static const Color cmIdColor = Color(0xFF21790B);
   static const Color dark = Colors.black87;
-  static const Color button = Color(0xFF22C55E);
+  static const Color button = accentBright;
   static const Color hoverBorder = Color(0xFF999999);
+
+  /// The accent that carries enough contrast on the surface of the theme that
+  /// is actually in effect. Use it wherever a colour is picked outside a
+  /// `BuildContext` and so cannot come off `Theme.of(context).colorScheme`.
+  static Color get accentForCurrentTheme =>
+      currentThemeMode() == ThemeMode.dark ? accentBright : accent;
 
   // ListTile
   static const ListTileThemeData listTileTheme = ListTileThemeData(
@@ -454,7 +465,7 @@ class MyTheme {
         style:
             MenuStyle(backgroundColor: MaterialStatePropertyAll(Colors.white))),
     colorScheme: ColorScheme.light(
-        primary: Colors.blue, secondary: accent, background: grayBg),
+        primary: accent, secondary: accent, background: grayBg),
     popupMenuTheme: PopupMenuThemeData(
         color: Colors.white,
         shape: RoundedRectangleBorder(
@@ -562,8 +573,8 @@ class MyTheme {
         style: MenuStyle(
             backgroundColor: MaterialStatePropertyAll(Color(0xFF121212)))),
     colorScheme: ColorScheme.dark(
-      primary: Colors.blue,
-      secondary: accent,
+      primary: accentBright,
+      secondary: accentBright,
       background: Color(0xFF24252B),
     ),
     popupMenuTheme: PopupMenuThemeData(
@@ -1151,8 +1162,8 @@ Widget createDialogContent(String text) {
     }
     spans.add(TextSpan(
       text: match.group(0) ?? '',
-      style: const TextStyle(
-        color: Colors.blue,
+      style: TextStyle(
+        color: MyTheme.accentForCurrentTheme,
         decoration: TextDecoration.underline,
       ),
       recognizer: TapGestureRecognizer()
@@ -1323,7 +1334,9 @@ Color? _msgboxColor(String type) {
   if (type.contains("error") || type == "re-input-password") {
     return Color(0xFFE04F5F);
   }
-  return Color(0xFF2C8CFF);
+  // Neutral/info dialogs get the brand accent; the colours above stay as they
+  // are because they carry meaning (success, warning, error), not branding.
+  return MyTheme.accentForCurrentTheme;
 }
 
 Widget msgboxIcon(String type) {
@@ -3744,7 +3757,7 @@ Widget loadPowered(BuildContext context) {
     cursor: SystemMouseCursors.click,
     child: GestureDetector(
       onTap: () {
-        launchUrl(Uri.parse('https://www.armilen.ru'));
+        launchUrl(Uri.parse(kArmilenSiteUrl));
       },
       child: Opacity(
           opacity: 0.5,

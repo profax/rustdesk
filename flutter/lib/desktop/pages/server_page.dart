@@ -446,9 +446,12 @@ class _CmHeaderState extends State<_CmHeader>
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
+          // Armilen: brand green instead of upstream's cyan/blue. Both stops
+          // stay dark enough (green-700 -> green-800) for the white peer name
+          // and id below to clear 4.5:1 anywhere across the gradient.
           colors: [
-            Color(0xff00bfe1),
-            Color(0xff0071ff),
+            MyTheme.accent,
+            Color(0xFF166534),
           ],
         ),
       ),

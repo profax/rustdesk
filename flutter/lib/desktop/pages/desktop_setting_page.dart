@@ -2448,7 +2448,7 @@ class _AboutState extends State<_About> {
                         .marginSymmetric(vertical: 4.0)),
               InkWell(
                   onTap: () {
-                    launchUrlString('https://www.armilen.ru/remote-privacy');
+                    launchUrlString(kArmilenPrivacyUrl);
                   },
                   child: Text(
                     translate('Privacy Statement'),
@@ -2456,14 +2456,14 @@ class _AboutState extends State<_About> {
                   ).marginSymmetric(vertical: 4.0)),
               InkWell(
                   onTap: () {
-                    launchUrlString('https://www.armilen.ru');
+                    launchUrlString(kArmilenSiteUrl);
                   },
                   child: Text(
                     translate('Website'),
                     style: linkStyle,
                   ).marginSymmetric(vertical: 4.0)),
               Container(
-                decoration: const BoxDecoration(color: Color(0xFF2c8cff)),
+                decoration: const BoxDecoration(color: MyTheme.accent),
                 padding:
                     const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
                 child: SelectionArea(

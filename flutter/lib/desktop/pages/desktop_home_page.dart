@@ -425,27 +425,27 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   Widget buildHelpCards(String updateUrl) {
     if (updateUrl.isNotEmpty && !isCardClosed) {
-      // Armilen: always link out instead of calling handleUpdate()'s in-app
-      // downloader. That path resolves the file via the native
-      // 'download-file-$version' key, which assumes upstream's rustdesk-*
-      // release asset naming and isn't wired up for our own release/download
-      // scheme. Until it is, sending users to the download page is correct.
-      const isToUpdate = false;
+      // Armilen: on an installed Windows/macOS client take upstream's in-app
+      // update path (download, then relaunch the new binary with --update, which
+      // replaces the installation in place). Downloading the .exe by hand is the
+      // route that goes wrong: the running old copy owns the single-instance
+      // window, so double-clicking the fresh download just refocuses it.
+      // www.armilen.ru serves the asset name handleUpdate() derives from the
+      // version-check URL, see Caddyfile's /api/download/*/ route.
+      final isToUpdate = (isWindows || isMacOS) && bind.mainIsInstalled();
       String btnText = isToUpdate ? 'Update' : 'Download';
       GestureTapCallback onPressed = () async {
-        final Uri url = Uri.parse(updateUrl);
-        await launchUrl(url);
+        await launchUrl(Uri.parse(kArmilenDownloadUrl));
       };
+      if (isToUpdate) {
+        onPressed = () => handleUpdate(updateUrl);
+      }
       return buildInstallCard(
           "",
           "${translate("new-version-of-{${bind.mainGetAppNameSync()}}-tip")} (${bind.mainGetNewVersion()})",
           btnText,
           onPressed,
-          closeButton: true,
-          help: isToUpdate ? 'Changelog' : null,
-          link: isToUpdate
-              ? 'https://github.com/rustdesk/rustdesk/releases/tag/${bind.mainGetNewVersion()}'
-              : null);
+          closeButton: true);
     }
     if (systemError.isNotEmpty) {
       return buildInstallCard("", systemError, "", () {});

@@ -218,6 +218,16 @@ const String kOptionShowMobileAction = "showMobileActions";
 
 const String kUrlActionClose = "close";
 
+// Armilen: the fork's public entry points. Kept in one place because they are
+// hand-written URLs on our own site, and a stale copy of one (the client shipped
+// /remote-privacy for a while, which only ever worked through a redirect) is
+// invisible until a user actually clicks it.
+const String kArmilenSiteUrl = "https://www.armilen.ru";
+// Where "a new version is available" sends people: the support page carries the
+// per-platform download buttons, so it works for every client we build.
+const String kArmilenDownloadUrl = "$kArmilenSiteUrl/support";
+const String kArmilenPrivacyUrl = "$kArmilenSiteUrl/legal/remote-privacy";
+
 const String kTabLabelHomePage = "Home";
 const String kTabLabelSettingPage = "Settings";
 
