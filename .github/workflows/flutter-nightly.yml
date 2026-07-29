@@ -1,10 +1,30 @@
 name: Flutter Nightly Build
 
+# Armilen: публикует сборки в скользящий релиз nightly, откуда их забирает
+# armilen-site/scripts/deploy-clients.js.
+#
+# Триггер push, а не cron: ночной прогон собирал одно и то же, если за день
+# ничего не поменялось, а после его отключения (85bca342) наоборот не собиралось
+# ничего - коммиты в master уходили в репозиторий, а на сайте оставалась старая
+# сборка до тех пор, пока кто-нибудь не запустит workflow руками. Сборка на push
+# привязывает содержимое релиза nightly к master.
+#
+# concurrency отменяет предыдущий прогон: серия коммитов подряд не должна
+# занимать раннеры сборками, которые всё равно перезапишет следующая.
 on:
-  #schedule:
-    # schedule build every night
-  #  - cron: "0 0 * * *"
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - "res/msi/Package/License.rtf"
   workflow_dispatch:
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   run-flutter-nightly-build:
