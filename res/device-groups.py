@@ -35,8 +35,6 @@ def headers_with(token):
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
-# ---------- Device Group APIs ----------
-
 def list_groups(url, token, name=None, page_size=50):
     headers = headers_with(token)
     params = {"pageSize": page_size}
@@ -115,9 +113,7 @@ def delete_groups(url, token, names):
     return "Success"
 
 
-# ---------- Device group assign APIs (name -> guid) ----------
-
-def view_devices(url, token, group_name=None, id=None, device_name=None, 
+def view_devices(url, token, group_name=None, id=None, device_name=None,
                  user_name=None, device_username=None, page_size=50):
     """View devices in a device group with filters"""
     headers = headers_with(token)
@@ -188,8 +184,8 @@ def parse_rules(s):
         if isinstance(v, list):
             # expect list of {"type": number, "name": string}
             return v
-    except Exception:
-        pass
+    except Exception as e:
+        raise ValueError(f"invalid --rules JSON: {s!r}") from e
     return None
 
 

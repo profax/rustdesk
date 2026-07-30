@@ -10,6 +10,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: scanaislop/aislop@v1
         with:
-          version: latest
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Resolve diff base
+        id: base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            ref="origin/${{ github.event.pull_request.base.ref }}"
+          elif [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            ref="${{ github.event.before }}"
+          else
+            ref="HEAD~1"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+      # 251 файлов форка не наши (апстрим RustDesk + вендорные libs/*), гейтить
+      # абсолютный скор всего дерева бессмысленно - гоняем только по диффу.
+      - name: Run aislop ci (changed files only)
+        run: npx --yes aislop@latest ci --changes --base "${{ steps.base.outputs.ref }}"

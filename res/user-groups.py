@@ -35,8 +35,6 @@ def headers_with(token):
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
-# ---------- User Group APIs ----------
-
 def list_groups(url, token, name=None, page_size=50):
     headers = headers_with(token)
     params = {"pageSize": page_size}
@@ -119,8 +117,6 @@ def delete_groups(url, token, names):
     return "Success"
 
 
-# ---------- User management in group ----------
-
 def view_users(url, token, group_name=None, name=None, page_size=50):
     """View users in a user group with filters"""
     headers = headers_with(token)
@@ -164,19 +160,16 @@ def add_users(url, token, group_name, user_names):
     if isinstance(user_names, str):
         user_names = [user_names]
     
-    # Get the user group guid
     g = get_group_by_name(url, token, group_name)
     if not g:
         print(f"Error: Group '{group_name}' not found")
         exit(1)
     guid = g.get("guid")
     
-    # Get user GUIDs
     user_guids = []
     errors = []
     
     for user_name in user_names:
-        # Get user by exact name match
         params = {"name": user_name, "pageSize": 50}
         r = requests.get(f"{url}/api/users", headers=headers, params=params)
         if r.status_code != 200:
@@ -222,8 +215,8 @@ def parse_rules(s):
         if isinstance(v, list):
             # expect list of {"type": number, "name": string}
             return v
-    except Exception:
-        pass
+    except Exception as e:
+        raise ValueError(f"invalid --rules JSON: {s!r}") from e
     return None
 
 

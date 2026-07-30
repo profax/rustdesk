@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-import optparse
+import optparse  # aislop-ignore-line ai-slop/hallucinated-import -- optparse is Python stdlib, not a hallucinated package
 import subprocess
 from hashlib import md5
 import brotli
@@ -20,7 +20,6 @@ def generate_md5_table(folder: str, level) -> dict:
     curdir = os.curdir
     os.chdir(folder)
     for root, _, files in os.walk('.'):
-        # remove ./
         for f in files:
             md5_generator = md5()
             full_path = os.path.join(root, f)
