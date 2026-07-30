@@ -220,6 +220,69 @@ def parse_rules(s):
     return None
 
 
+def _cmd_view(args):
+    res = list_groups(args.url, args.token, args.name)
+    print(json.dumps(res, indent=2))
+
+
+def _cmd_add(args):
+    if not args.name:
+        print("Error: --name is required")
+        exit(1)
+    print(create_group(
+        args.url, args.token, args.name, args.note,
+        parse_rules(args.accessed_from),
+        parse_rules(args.access_to)
+    ))
+
+
+def _cmd_update(args):
+    if not args.name:
+        print("Error: --name is required")
+        exit(1)
+    print(update_group(
+        args.url, args.token, args.name, args.new_name, args.note,
+        parse_rules(args.accessed_from),
+        parse_rules(args.access_to)
+    ))
+
+
+def _cmd_delete(args):
+    if not args.name:
+        print("Error: --name is required (supports comma separated)")
+        exit(1)
+    names = [x.strip() for x in args.name.split(",") if x.strip()]
+    print(delete_groups(args.url, args.token, names))
+
+
+def _cmd_view_users(args):
+    res = view_users(
+        args.url,
+        args.token,
+        group_name=args.name,
+        name=args.user_name
+    )
+    print(json.dumps(res, indent=2))
+
+
+def _cmd_add_users(args):
+    if not args.name or not args.users:
+        print("Error: --name and --users are required")
+        exit(1)
+    users = [x.strip() for x in args.users.split(",") if x.strip()]
+    print(add_users(args.url, args.token, args.name, users))
+
+
+COMMANDS = {
+    "view": _cmd_view,
+    "add": _cmd_add,
+    "update": _cmd_update,
+    "delete": _cmd_delete,
+    "view-users": _cmd_view_users,
+    "add-users": _cmd_add_users,
+}
+
+
 def main():
     parser = argparse.ArgumentParser(description="User Group manager")
     parser.add_argument("command", choices=[
@@ -248,47 +311,7 @@ def main():
     args = parser.parse_args()
     while args.url.endswith("/"): args.url = args.url[:-1]
 
-    if args.command == "view":
-        res = list_groups(args.url, args.token, args.name)
-        print(json.dumps(res, indent=2))
-    elif args.command == "add":
-        if not args.name:
-            print("Error: --name is required")
-            exit(1)
-        print(create_group(
-            args.url, args.token, args.name, args.note,
-            parse_rules(args.accessed_from),
-            parse_rules(args.access_to)
-        ))
-    elif args.command == "update":
-        if not args.name:
-            print("Error: --name is required")
-            exit(1)
-        print(update_group(
-            args.url, args.token, args.name, args.new_name, args.note,
-            parse_rules(args.accessed_from),
-            parse_rules(args.access_to)
-        ))
-    elif args.command == "delete":
-        if not args.name:
-            print("Error: --name is required (supports comma separated)")
-            exit(1)
-        names = [x.strip() for x in args.name.split(",") if x.strip()]
-        print(delete_groups(args.url, args.token, names))
-    elif args.command == "view-users":
-        res = view_users(
-            args.url, 
-            args.token, 
-            group_name=args.name,
-            name=args.user_name
-        )
-        print(json.dumps(res, indent=2))
-    elif args.command == "add-users":
-        if not args.name or not args.users:
-            print("Error: --name and --users are required")
-            exit(1)
-        users = [x.strip() for x in args.users.split(",") if x.strip()]
-        print(add_users(args.url, args.token, args.name, users))
+    COMMANDS[args.command](args)
 
 
 if __name__ == "__main__":

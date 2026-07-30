@@ -189,6 +189,79 @@ def parse_rules(s):
     return None
 
 
+def _cmd_view(args):
+    res = list_groups(args.url, args.token, args.name)
+    print(json.dumps(res, indent=2))
+
+
+def _cmd_add(args):
+    if not args.name:
+        print("Error: --name is required")
+        exit(1)
+    print(create_group(
+        args.url, args.token, args.name, args.note,
+        parse_rules(args.accessed_from)
+    ))
+
+
+def _cmd_update(args):
+    if not args.name:
+        print("Error: --name is required")
+        exit(1)
+    print(update_group(
+        args.url, args.token, args.name, args.new_name, args.note,
+        parse_rules(args.accessed_from)
+    ))
+
+
+def _cmd_delete(args):
+    if not args.name:
+        print("Error: --name is required (supports comma separated)")
+        exit(1)
+    names = [x.strip() for x in args.name.split(",") if x.strip()]
+    print(delete_groups(args.url, args.token, names))
+
+
+def _cmd_view_devices(args):
+    res = view_devices(
+        args.url,
+        args.token,
+        group_name=args.name,
+        id=args.id,
+        device_name=args.device_name,
+        user_name=args.user_name,
+        device_username=args.device_username
+    )
+    print(json.dumps(res, indent=2))
+
+
+def _cmd_add_devices(args):
+    if not args.name or not args.ids:
+        print("Error: --name and --ids are required for add/remove devices")
+        exit(1)
+    ids = [x.strip() for x in args.ids.split(",") if x.strip()]
+    print(add_devices(args.url, args.token, args.name, ids))
+
+
+def _cmd_remove_devices(args):
+    if not args.name or not args.ids:
+        print("Error: --name and --ids are required for add/remove devices")
+        exit(1)
+    ids = [x.strip() for x in args.ids.split(",") if x.strip()]
+    print(remove_devices(args.url, args.token, args.name, ids))
+
+
+COMMANDS = {
+    "view": _cmd_view,
+    "add": _cmd_add,
+    "update": _cmd_update,
+    "delete": _cmd_delete,
+    "view-devices": _cmd_view_devices,
+    "add-devices": _cmd_add_devices,
+    "remove-devices": _cmd_remove_devices,
+}
+
+
 def main():
     parser = argparse.ArgumentParser(description="Device Group manager")
     parser.add_argument("command", choices=[
@@ -219,51 +292,7 @@ def main():
     args = parser.parse_args()
     while args.url.endswith("/"): args.url = args.url[:-1]
 
-    if args.command == "view":
-        res = list_groups(args.url, args.token, args.name)
-        print(json.dumps(res, indent=2))
-    elif args.command == "add":
-        if not args.name:
-            print("Error: --name is required")
-            exit(1)
-        print(create_group(
-            args.url, args.token, args.name, args.note,
-            parse_rules(args.accessed_from)
-        ))
-    elif args.command == "update":
-        if not args.name:
-            print("Error: --name is required")
-            exit(1)
-        print(update_group(
-            args.url, args.token, args.name, args.new_name, args.note,
-            parse_rules(args.accessed_from)
-        ))
-    elif args.command == "delete":
-        if not args.name:
-            print("Error: --name is required (supports comma separated)")
-            exit(1)
-        names = [x.strip() for x in args.name.split(",") if x.strip()]
-        print(delete_groups(args.url, args.token, names))
-    elif args.command == "view-devices":
-        res = view_devices(
-            args.url, 
-            args.token, 
-            group_name=args.name,
-            id=args.id,
-            device_name=args.device_name,
-            user_name=args.user_name,
-            device_username=args.device_username
-        )
-        print(json.dumps(res, indent=2))
-    elif args.command in ("add-devices", "remove-devices"):
-        if not args.name or not args.ids:
-            print("Error: --name and --ids are required for add/remove devices")
-            exit(1)
-        ids = [x.strip() for x in args.ids.split(",") if x.strip()]
-        if args.command == "add-devices":
-            print(add_devices(args.url, args.token, args.name, ids))
-        else:
-            print(remove_devices(args.url, args.token, args.name, ids))
+    COMMANDS[args.command](args)
 
 
 if __name__ == "__main__":
