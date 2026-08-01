@@ -62,6 +62,9 @@ pub const PLATFORM_ANDROID: &str = "Android";
 
 pub const TIMER_OUT: Duration = Duration::from_secs(1);
 pub const DEFAULT_KEEP_ALIVE: i32 = 60_000;
+// Pro-сервер шлёт KeyExchange сразу после accept, то есть за один RTT.
+// Секунды хватает с запасом, а открытый hbbs не заставляет ждать READ_TIMEOUT.
+const SECURE_TCP_TIMEOUT: u64 = 1_000;
 
 const MIN_VER_MULTI_UI_SESSION: &str = "1.2.4";
 
@@ -1975,6 +1978,20 @@ async fn secure_tcp_impl(conn: &mut Stream, key: &str, log_on_success: bool) -> 
 
 pub async fn secure_tcp(conn: &mut Stream, key: &str) -> ResultType<()> {
     secure_tcp_impl(conn, key, true).await
+}
+
+// Обмен ключами первым начинает только hbbs из rustdesk-server-pro. Открытый
+// rustdesk-server (наш hbbs) отвечает лишь на сообщения клиента и на голое
+// подключение молчит, поэтому secure_tcp упирается в READ_TIMEOUT и валит
+// сессию: с залогиненным аккаунтом (token не пуст) не открывается ни одно
+// исходящее соединение. Даём серверу короткое окно и, если он молчит,
+// продолжаем по открытому каналу, как клиент делал до появления обмена ключами.
+pub async fn secure_tcp_optional(conn: &mut Stream, key: &str) {
+    match timeout(SECURE_TCP_TIMEOUT, secure_tcp_impl(conn, key, true)).await {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => log::warn!("Failed to secure tcp: {err}"),
+        Err(_) => log::info!("Rendezvous server offers no key exchange, continuing unencrypted"),
+    }
 }
 
 async fn secure_tcp_silent(conn: &mut Stream, key: &str) -> ResultType<()> {
