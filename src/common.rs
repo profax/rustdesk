@@ -1180,7 +1180,7 @@ fn get_tcp_proxy_addr() -> String {
 }
 
 /// Send an HTTP request via the rendezvous server's TCP proxy using protobuf.
-/// Connects with `connect_tcp` + `secure_tcp`, sends `HttpProxyRequest`,
+/// Connects with `connect_tcp` + `secure_tcp_silent`, sends `HttpProxyRequest`,
 /// receives `HttpProxyResponse`.
 ///
 /// The entire operation (connect + handshake + send + receive) is wrapped in
@@ -1976,16 +1976,17 @@ async fn secure_tcp_impl(conn: &mut Stream, key: &str, log_on_success: bool) -> 
     Ok(())
 }
 
-pub async fn secure_tcp(conn: &mut Stream, key: &str) -> ResultType<()> {
-    secure_tcp_impl(conn, key, true).await
-}
-
 // Обмен ключами первым начинает только hbbs из rustdesk-server-pro. Открытый
 // rustdesk-server (наш hbbs) отвечает лишь на сообщения клиента и на голое
-// подключение молчит, поэтому secure_tcp упирается в READ_TIMEOUT и валит
-// сессию: с залогиненным аккаунтом (token не пуст) не открывается ни одно
-// исходящее соединение. Даём серверу короткое окно и, если он молчит,
-// продолжаем по открытому каналу, как клиент делал до появления обмена ключами.
+// подключение молчит, поэтому обмен упирается в READ_TIMEOUT и валит сессию:
+// с залогиненным аккаунтом (token не пуст) не открывается ни одно исходящее
+// соединение. Даём серверу короткое окно и, если он молчит, продолжаем по
+// открытому каналу, как клиент делал до появления обмена ключами.
+//
+// Апстримный secure_tcp убран намеренно, вместе с последними вызовами: против
+// нашего hbbs он не мог отработать ни разу. Если синхронизация с апстримом
+// принесёт новый вызов, сборка сломается на неизвестном имени, и место разберём
+// осознанно, вместо того чтобы снова выпустить клиент без исходящих соединений.
 pub async fn secure_tcp_optional(conn: &mut Stream, key: &str) {
     match timeout(SECURE_TCP_TIMEOUT, secure_tcp_impl(conn, key, true)).await {
         Ok(Ok(())) => {}
