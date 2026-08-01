@@ -160,6 +160,33 @@ install_flutter() {
 	git config --global --add safe.directory "$root" || true
 }
 
+install_vcpkg() {
+	log "vcpkg ${VCPKG_COMMIT_ID:0:12}"
+	mkdir -p "$CACHE_DIR"
+	if [ ! -d "$VCPKG_ROOT/.git" ]; then
+		git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+	fi
+	git -C "$VCPKG_ROOT" fetch --depth 1 origin "$VCPKG_COMMIT_ID"
+	git -C "$VCPKG_ROOT" checkout -q "$VCPKG_COMMIT_ID"
+	[ -x "$VCPKG_ROOT/vcpkg" ] || "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+}
+
+# Хостовый C-тулчейн нужен даже кросс-сборкам: build.rs у hwcodec гоняет bindgen
+# хостовым libclang. Без заголовков libc он падает на /usr/include/stdint.h с
+# «'bits/libc-header-start.h' file not found», и сообщение никак не намекает,
+# что дело в отсутствующем пакете.
+require_host_cc() {
+	command -v clang >/dev/null 2>&1 || die "нет clang: sudo apt-get install -y clang"
+	[ -f /usr/include/stdint.h ] || die "нет заголовков libc: sudo apt-get install -y libc6-dev"
+}
+
+android_ndk_dir() {
+	local dir
+	dir="$(find "$ANDROID_SDK_ROOT/ndk" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort -V | tail -1)"
+	[ -n "$dir" ] || die "NDK не найден, сначала --deps"
+	printf '%s' "$dir"
+}
+
 # Брендинг живёт в composite action, потому что часть правок меняет файлы
 # сабмодулей. Здесь прогоняются те же шаги, а не переписанные рядом: сборка с
 # другим брендингом, чем на CI, ничего бы не проверяла.
@@ -262,6 +289,7 @@ build_windows() {
 # Flutter ставятся в домашний каталог.
 
 android_deps() {
+	require_host_cc
 	install_rust
 	rustup target add aarch64-linux-android
 	install_flutter "$ANDROID_FLUTTER_VERSION" "$FLUTTER_ROOT"
@@ -293,18 +321,34 @@ android_deps() {
 	log "cargo-ndk $CARGO_NDK_VERSION"
 	cargo install cargo-ndk --version "$CARGO_NDK_VERSION" --locked
 
+	# hwcodec линкуется с ffmpeg из vcpkg и под Android тоже: без этого его
+	# build.rs падает на `VCPKG_ROOT` со скупым `NotPresent`. Триплет собирает
+	# тот же скрипт, что и на CI, а не своя копия команды vcpkg
+	install_vcpkg
+	log "Зависимости vcpkg под Android (arm64-android, первый раз это долго)"
+	ANDROID_NDK_HOME="$(android_ndk_dir)" ANDROID_NDK_ROOT="$(android_ndk_dir)" \
+		./flutter/build_android_deps.sh arm64-v8a
+
 	log "Зависимости Android установлены"
 }
 
 build_android() {
 	apply_branding
+	require_host_cc
 	command -v cargo-ndk >/dev/null 2>&1 || die "нет cargo-ndk, сначала --deps"
+	[ -d "$VCPKG_ROOT/installed/arm64-android" ] || die "нет зависимостей vcpkg под arm64-android, сначала --deps"
 
 	local ndk
-	ndk="$(find "$ANDROID_SDK_ROOT/ndk" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort -V | tail -1)"
-	[ -n "$ndk" ] || die "NDK не найден, сначала --deps"
+	ndk="$(android_ndk_dir)"
 	export ANDROID_NDK_HOME="$ndk"
 	export ANDROID_NDK_ROOT="$ndk"
+
+	# bindgen внутри hwcodec зовёт libclang с андроидным таргетом, но набор
+	# инклюдов берёт хостовый. На ubuntu-22.04 с clang 14 это сходило с рук, на
+	# clang 18 он читает /usr/include/stdint.h и не находит multiarch-заголовок
+	# bits/libc-header-start.h. Явный sysroot из NDK убирает неоднозначность и
+	# не мешает более старым clang
+	export BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
 
 	log "Ядро Rust под aarch64 (ndk_arm64.sh, как на CI)"
 	./flutter/ndk_arm64.sh
@@ -362,13 +406,7 @@ linux_deps() {
 	flutter config --enable-linux-desktop
 	flutter precache --linux
 
-	log "vcpkg ${VCPKG_COMMIT_ID:0:12}"
-	if [ ! -d "$VCPKG_ROOT/.git" ]; then
-		git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
-	fi
-	git -C "$VCPKG_ROOT" fetch --depth 1 origin "$VCPKG_COMMIT_ID"
-	git -C "$VCPKG_ROOT" checkout -q "$VCPKG_COMMIT_ID"
-	[ -x "$VCPKG_ROOT/vcpkg" ] || "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+	install_vcpkg
 
 	log "Кодогенератор моста flutter_rust_bridge $FLUTTER_RUST_BRIDGE_VERSION"
 	cargo install flutter_rust_bridge_codegen --version "$FLUTTER_RUST_BRIDGE_VERSION" --features uuid --locked

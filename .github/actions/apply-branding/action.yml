@@ -108,3 +108,30 @@ runs:
         awk '{ print } /\("API Server", "API-сервер"\),/ { print "        (\"Key\", \"Ключ шифрования\")," }' "$cfg" > "$cfg.tmp"
         mv "$cfg.tmp" "$cfg"
         grep -F -e '("ID/Relay Server"' -e '("ID Server"' -e '("Relay Server"' -e '("API Server"' -e '("Key"' "$cfg"
+
+    - name: Rename the personal address book to «Личные» in src/lang
+      shell: bash
+      run: |
+        set -euo pipefail
+        cfg="src/lang/ru.rs"
+        if grep -qF '("My address book", "Личные"),' "$cfg"; then
+          echo "Branding already applied, skipping"
+          exit 0
+        fi
+        # Личная книга не переименовывается из админки: сервер отдаёт её на лету
+        # (/api/ab/personal), а имя клиент берёт из своей константы
+        # _personalAddressBookName и показывает через translate(). То есть
+        # единственная точка, где её вообще можно назвать иначе, это перевод.
+        #
+        # «Моя адресная книга» по смыслу совпадала с книгой, которую владелец
+        # заводит руками, и различить их на экране было нельзя. Книги под
+        # клиентов и филиалы называются именами клиентов, поэтому личной
+        # остаётся «Личные», а никакой «основной» не заводится.
+        old='("My address book", "Моя адресная книга"),'
+        if ! grep -qF "$old" "$cfg"; then
+          echo "::error file=$cfg::$old not found, upstream changed the translation; update this action"
+          exit 1
+        fi
+        sed -i.bak 's#("My address book", "Моя адресная книга")#("My address book", "Личные")#' "$cfg"
+        rm -f "$cfg.bak"
+        grep -F '("My address book"' "$cfg"
