@@ -3,7 +3,9 @@ description: >
   Patches sources that live in upstream-tracking submodules. The submodules
   keep pointing at rustdesk/* (no second fork to maintain), so upstream syncs
   stay conflict-free; every rebrand patch of submodule code must live in this
-  action, not in the workflows that call it.
+  action, not in the workflows that call it. Здесь же живут правки файлов
+  основного репозитория, которые апстрим перетряхивает целиком (src/lang/*):
+  прямая правка ловила бы конфликт на каждой синхронизации.
 runs:
   using: composite
   steps:
@@ -76,3 +78,33 @@ runs:
         sed -i.bak 's#const URL: &str = "https://api.rustdesk.com/version/latest";#const URL: \&str = "https://www.armilen.ru/api/version-check";#' "$cfg"
         rm -f "$cfg.bak"
         grep -F 'const URL: &str' "$cfg"
+
+    - name: Name RU server fields like the guide on the site in src/lang
+      shell: bash
+      run: |
+        set -euo pipefail
+        cfg="src/lang/ru.rs"
+        if grep -qF '("Key", "Ключ шифрования"),' "$cfg"; then
+          echo "Branding already applied, skipping"
+          exit 0
+        fi
+        # Клиент и гайд armilen-site (/remote-ios) должны звать поля одинаково,
+        # иначе инструкция расходится с тем, что человек видит на экране.
+        # Апстримный перевод зовёт их «Сервер ID», «Ретранслятор», «Сервер API»,
+        # а ключ не переводит вовсе.
+        for old in '("ID/Relay Server", "ID/Ретранслятор"),' '("ID Server", "Сервер ID"),' '("Relay Server", "Ретранслятор"),' '("API Server", "Сервер API"),'; do
+          if ! grep -qF "$old" "$cfg"; then
+            echo "::error file=$cfg::$old not found, upstream changed the translation; update this action"
+            exit 1
+          fi
+        done
+        sed -i.bak 's#("ID/Relay Server", "ID/Ретранслятор")#("ID/Relay Server", "ID/Реле-сервер")#' "$cfg"
+        sed -i.bak 's#("ID Server", "Сервер ID")#("ID Server", "ID-сервер")#' "$cfg"
+        sed -i.bak 's#("Relay Server", "Ретранслятор")#("Relay Server", "Реле-сервер")#' "$cfg"
+        sed -i.bak 's#("API Server", "Сервер API")#("API Server", "API-сервер")#' "$cfg"
+        rm -f "$cfg.bak"
+        # Ключа в апстримном ru.rs нет, поэтому строку добавляем, а не правим.
+        # awk, а не sed: перенос строки в замене BSD sed на macOS не понимает
+        awk '{ print } /\("API Server", "API-сервер"\),/ { print "        (\"Key\", \"Ключ шифрования\")," }' "$cfg" > "$cfg.tmp"
+        mv "$cfg.tmp" "$cfg"
+        grep -F -e '("ID/Relay Server"' -e '("ID Server"' -e '("Relay Server"' -e '("API Server"' -e '("Key"' "$cfg"
