@@ -105,7 +105,6 @@ ANDROID_FLUTTER_VERSION="$(workflow_env ANDROID_FLUTTER_VERSION)"
 VCPKG_COMMIT_ID="$(workflow_env VCPKG_COMMIT_ID)"
 NDK_VERSION="$(workflow_env NDK_VERSION)"
 CARGO_NDK_VERSION="$(workflow_env CARGO_NDK_VERSION)"
-FLUTTER_RUST_BRIDGE_VERSION="$(workflow_env FLUTTER_RUST_BRIDGE_VERSION .github/workflows/bridge.yml)"
 
 export VCPKG_ROOT="$CACHE_DIR/vcpkg"
 export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
@@ -180,6 +179,63 @@ require_host_cc() {
 	[ -f /usr/include/stdint.h ] || die "нет заголовков libc: sudo apt-get install -y libc6-dev"
 }
 
+# Мост Rust↔Dart не лежит в репозитории: `src/bridge_generated.rs` стоит в
+# .gitignore, при этом `lib.rs` объявляет `mod bridge_generated`. Без него не
+# собирается ни одна цель, даже `cargo build --lib`.
+#
+# Мост не генерируется здесь, а скачивается готовым, и это ровно то, что делают
+# сами сборочные джобы CI шагом «Restore bridge files»: генерирует его один
+# отдельный job, остальные берут артефакт. Локальная генерация повторяла бы
+# цепочку из cargo-expand, pub get, ffigen, cbindgen и freezed, где падение
+# любого звена оставляет наполовину записанный bridge_generated.rs с
+# незакрытым блоком DUMMY CODE FOR BINDGEN. Такой файл выглядит свежее входа,
+# проходит любую проверку по времени правки и ломает сборку ссылкой на
+# необъявленный Dart_Handle. Скачанный артефакт вдобавок побайтово совпадает с
+# тем, на чём собирается релиз, включая generated_bridge.freezed.dart, который
+# локальная генерация не создаёт вовсе.
+BRIDGE_WORKFLOW="flutter-ci.yml"
+BRIDGE_ARTIFACT="bridge-artifact"
+
+restore_bridge() {
+	if [ -f "src/bridge_generated.rs" ] && [ -f "flutter/lib/generated_bridge.freezed.dart" ]; then
+		log "Мост на месте, пропускаем"
+		return
+	fi
+	command -v gh >/dev/null 2>&1 || die "нужен gh для загрузки моста: https://cli.github.com"
+
+	log "Мост Rust↔Dart: артефакт последней зелёной сборки CI"
+	local run_id
+	run_id="$(gh run list --workflow="$BRIDGE_WORKFLOW" --status success --limit 1 --json databaseId -q '.[0].databaseId')"
+	[ -n "$run_id" ] || die "у $BRIDGE_WORKFLOW нет ни одного успешного прогона, мост брать неоткуда"
+
+	local dest="$CACHE_DIR/bridge/$run_id"
+	if [ ! -d "$dest" ]; then
+		mkdir -p "$dest"
+		gh run download "$run_id" -n "$BRIDGE_ARTIFACT" -D "$dest" ||
+			die "не скачался артефакт $BRIDGE_ARTIFACT прогона $run_id (артефакты живут ограниченное время)"
+	fi
+	cp -a "$dest/." "$REPO_ROOT/"
+	echo "    из прогона $run_id"
+}
+
+# Gradle андроидного проекта работает на Java 17: CI-джоб явно прописывает
+# JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64. На системной Java 21 сборка
+# падает на несовместимости Gradle с версией JVM. Ставим свой JDK в кеш, а не
+# в систему, чтобы цель android оставалась без sudo.
+JDK_DIR="$CACHE_DIR/jdk-17"
+
+install_jdk17() {
+	if [ -x "$JDK_DIR/bin/java" ]; then
+		log "JDK 17 на месте"
+		return
+	fi
+	log "JDK 17 (Temurin)"
+	mkdir -p "$JDK_DIR"
+	curl -fsSL "https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse" |
+		tar -xz -C "$JDK_DIR" --strip-components=1
+	"$JDK_DIR/bin/java" -version
+}
+
 android_ndk_dir() {
 	local dir
 	dir="$(find "$ANDROID_SDK_ROOT/ndk" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort -V | tail -1)"
@@ -240,7 +296,10 @@ sync_to_windows() {
 }
 
 windows_deps() {
+	# Мост кладётся на сторону WSL до синхронизации: файлы платформенно
+	# независимы, и на хост они уезжают вместе с исходниками
 	apply_branding
+	restore_bridge
 	sync_to_windows
 	cat <<-EOF
 
@@ -263,6 +322,7 @@ windows_deps() {
 
 build_windows() {
 	apply_branding
+	restore_bridge
 	sync_to_windows
 	[ "$SYNC_ONLY" -eq 0 ] || {
 		log "Только синхронизация, сборку не запускаю"
@@ -290,6 +350,7 @@ build_windows() {
 
 android_deps() {
 	require_host_cc
+	install_jdk17
 	install_rust
 	rustup target add aarch64-linux-android
 	install_flutter "$ANDROID_FLUTTER_VERSION" "$FLUTTER_ROOT"
@@ -334,6 +395,7 @@ android_deps() {
 
 build_android() {
 	apply_branding
+	restore_bridge
 	require_host_cc
 	command -v cargo-ndk >/dev/null 2>&1 || die "нет cargo-ndk, сначала --deps"
 	[ -d "$VCPKG_ROOT/installed/arm64-android" ] || die "нет зависимостей vcpkg под arm64-android, сначала --deps"
@@ -361,10 +423,14 @@ build_android() {
 	# Релизного ключа здесь нет и быть не должно, поэтому apk подписывается
 	# отладочным. Тот же приём, что на CI
 	sed -i "s/signingConfigs.release/signingConfigs.debug/g" ./flutter/android/app/build.gradle
+	# Тот же подъём памяти Gradle, что на CI: 1 ГБ по умолчанию не хватает
+	sed -i "s/org.gradle.jvmargs=-Xmx1024M/org.gradle.jvmargs=-Xmx2g/g" ./flutter/android/gradle.properties
 
-	log "APK"
-	(cd flutter && flutter build apk --release --target-platform android-arm64 --split-per-abi)
-	git checkout -- ./flutter/android/app/build.gradle
+	log "APK (Java 17)"
+	[ -x "$JDK_DIR/bin/java" ] || die "нет JDK 17, сначала --deps"
+	(cd flutter && JAVA_HOME="$JDK_DIR" PATH="$JDK_DIR/bin:$PATH" \
+		flutter build apk --release --target-platform android-arm64 --split-per-abi)
+	git checkout -- ./flutter/android/app/build.gradle ./flutter/android/gradle.properties
 
 	local apk="flutter/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
 	[ -f "$apk" ] || die "Flutter не отдал apk в $apk"
@@ -408,14 +474,12 @@ linux_deps() {
 
 	install_vcpkg
 
-	log "Кодогенератор моста flutter_rust_bridge $FLUTTER_RUST_BRIDGE_VERSION"
-	cargo install flutter_rust_bridge_codegen --version "$FLUTTER_RUST_BRIDGE_VERSION" --features uuid --locked
-
 	log "Зависимости Linux установлены"
 }
 
 build_linux() {
 	apply_branding
+	restore_bridge
 
 	[ -x "$VCPKG_ROOT/vcpkg" ] || die "vcpkg не собран, сначала --deps"
 	log "Зависимости vcpkg (x64-linux)"
@@ -428,15 +492,6 @@ build_linux() {
 		log "Ядро собралось, правка компилируется"
 		echo "    Полное приложение: ./scripts/build-local.sh --target linux --full"
 		return
-	fi
-
-	local generated="flutter/lib/generated_bridge.dart"
-	if [ ! -f "$generated" ] || [ "src/flutter_ffi.rs" -nt "$generated" ]; then
-		log "Генерация моста"
-		flutter_rust_bridge_codegen \
-			--rust-input ./src/flutter_ffi.rs \
-			--dart-output ./flutter/lib/generated_bridge.dart \
-			--c-output ./flutter/macos/Runner/bridge_generated.h
 	fi
 
 	log "Приложение Flutter"

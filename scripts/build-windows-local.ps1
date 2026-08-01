@@ -130,6 +130,11 @@ function Invoke-Build {
 	Set-Location $SourceDir
 
 	Write-Step "Зависимости vcpkg ($VcpkgTriplet)"
+	# ffmpeg объявлен в vcpkg.json как host: true, то есть ставится в хостовый
+	# триплет. По умолчанию на Windows это x64-windows, а hwcodec ищет заголовки
+	# в x64-windows-static и падает на libavutil/pixfmt.h. CI приравнивает
+	# хостовый триплет к целевому этой же переменной, повторяем.
+	$env:VCPKG_DEFAULT_HOST_TRIPLET = $VcpkgTriplet
 	# Аргумент кавычится целиком: `--flag="$var\path"` с кавычкой в середине
 	# токена парсер PowerShell не принимает
 	$installRoot = Join-Path $VcpkgRoot "installed"
