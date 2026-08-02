@@ -26,7 +26,8 @@ param(
 	[string]$SourceDir = "C:\dev\armilen-remote",
 	[string]$FlutterVersion = "3.24.5",
 	[string]$RustVersion = "1.75",
-	[string]$VcpkgCommitId = "120deac3062162151622ca4860575a33844ba10b"
+	[string]$VcpkgCommitId = "120deac3062162151622ca4860575a33844ba10b",
+	[string]$LlvmVersion = "15.0.6"
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,6 +36,7 @@ Set-StrictMode -Version Latest
 $CacheDir = Join-Path $env:LOCALAPPDATA "armilen-remote-build"
 $VcpkgRoot = Join-Path $CacheDir "vcpkg"
 $FlutterRoot = Join-Path $CacheDir "flutter"
+$LlvmRoot = Join-Path $CacheDir "llvm-$LlvmVersion"
 $VcpkgTriplet = "x64-windows-static"
 
 function Write-Step { param([string]$Text) Write-Host "`n==> $Text" -ForegroundColor Green }
@@ -55,20 +57,51 @@ function Initialize-Paths {
 			"$env:LOCALAPPDATA\Programs\Python\Python312",
 			"$env:LOCALAPPDATA\Programs\Python\Python312\Scripts",
 			"$env:ProgramFiles\Git\cmd",
-			"$env:ProgramFiles\LLVM\bin",
 			"$env:ProgramFiles\NASM"
 		)) { Add-ToPath $p }
+
+	# Пиновая LLVM идёт впереди системной, а LIBCLANG_PATH снимает догадки:
+	# bindgen ищет libclang сам и без подсказки берёт первую попавшуюся
+	if (Test-Path (Join-Path $LlvmRoot "bin")) {
+		Add-ToPath (Join-Path $LlvmRoot "bin")
+		$env:LIBCLANG_PATH = Join-Path $LlvmRoot "bin"
+	}
+}
+
+# bindgen читает заголовки не компилятором MSVC, а libclang, и результат
+# зависит от её версии. На libclang 22 разбор заголовков aom и vpx рассыпается
+# молча: bindgen не падает, а отдаёт непрозрачные заглушки вида
+# `struct aom_codec_dec_cfg { _address: u8 }`, и сборка ломается уже в Rust на
+# «no field named threads». CI пинит LLVM ровно этой переменной, повторяем.
+function Install-Llvm {
+	if (Test-Path (Join-Path $LlvmRoot "bin\libclang.dll")) {
+		Write-Step "LLVM $LlvmVersion на месте"
+		return
+	}
+	Write-Step "LLVM $LlvmVersion (пиновая, как на CI)"
+	$exe = Join-Path $env:TEMP "LLVM-$LlvmVersion-win64.exe"
+	$url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$LlvmVersion/LLVM-$LlvmVersion-win64.exe"
+	Invoke-WebRequest -Uri $url -OutFile $exe -UseBasicParsing
+	# Установщик NSIS: /S тихий режим, /D обязан идти последним и без кавычек.
+	# -NoNewWindow с NSIS несовместим (InvalidOperationException), а установка
+	# в LOCALAPPDATA прав администратора не требует
+	Start-Process -FilePath $exe -ArgumentList "/S", "/D=$LlvmRoot" -Wait
+	Remove-Item $exe -ErrorAction SilentlyContinue
+	if (-not (Test-Path (Join-Path $LlvmRoot "bin\libclang.dll"))) {
+		Die "LLVM $LlvmVersion не установился в $LlvmRoot"
+	}
 }
 
 function Install-Deps {
 	Write-Step "Инструменты через winget"
 
 	$id = @{ Silent = "--silent"; Accept = "--accept-package-agreements", "--accept-source-agreements" }
+	# LLVM здесь намеренно нет: bindgen привязан к версии libclang, и свежая
+	# из winget ломает разбор заголовков. Ставится пиновая, см. Install-Llvm
 	foreach ($pkg in @(
 			"Git.Git",
 			"Python.Python.3.12",
 			"Rustlang.Rustup",
-			"LLVM.LLVM",
 			"Kitware.CMake",
 			"NASM.NASM"
 		)) {
@@ -79,6 +112,8 @@ function Install-Deps {
 			Write-Host "    winget вернул $LASTEXITCODE, проверьте пакет вручную" -ForegroundColor Yellow
 		}
 	}
+
+	Install-Llvm
 
 	# Build Tools ставятся отдельно: без рабочей нагрузки VCTools у Flutter нет
 	# ни MSBuild, ни компилятора, и `flutter build windows` падает на конфигурации
@@ -119,6 +154,10 @@ function Install-Deps {
 function Invoke-Build {
 	if (-not (Test-Path $SourceDir)) { Die "нет каталога с исходниками: $SourceDir. Сначала синхронизация из WSL" }
 	Initialize-Paths
+
+	if (-not (Test-Path (Join-Path $LlvmRoot "bin\libclang.dll"))) {
+		Die "нет пиновой LLVM $LlvmVersion в $LlvmRoot. Запустите с -Deps от администратора"
+	}
 
 	foreach ($tool in @("git", "python", "cargo", "flutter")) {
 		if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {

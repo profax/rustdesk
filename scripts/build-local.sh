@@ -104,6 +104,7 @@ FLUTTER_VERSION="$(workflow_env FLUTTER_VERSION)"
 ANDROID_FLUTTER_VERSION="$(workflow_env ANDROID_FLUTTER_VERSION)"
 VCPKG_COMMIT_ID="$(workflow_env VCPKG_COMMIT_ID)"
 NDK_VERSION="$(workflow_env NDK_VERSION)"
+LLVM_VERSION="$(workflow_env LLVM_VERSION)"
 CARGO_NDK_VERSION="$(workflow_env CARGO_NDK_VERSION)"
 
 export VCPKG_ROOT="$CACHE_DIR/vcpkg"
@@ -311,7 +312,8 @@ windows_deps() {
 		    powershell -ExecutionPolicy Bypass -File "${WIN_SRC_DIR_NATIVE}\\scripts\\build-windows-local.ps1" -Deps
 
 		Ставится Git, Python 3.12, Rustup, LLVM, CMake, NASM, Visual Studio 2022
-		Build Tools с рабочей нагрузкой C++, Flutter ${FLUTTER_VERSION} и vcpkg.
+		Build Tools с рабочей нагрузкой C++, Flutter ${FLUTTER_VERSION}, vcpkg и
+		LLVM ${LLVM_VERSION} (пиновая: bindgen привязан к версии libclang).
 		Порядка 15 ГБ и около часа, один раз на машину.
 
 		После этого сборка запускается отсюда и уже без вас:
@@ -334,7 +336,8 @@ build_windows() {
 		-File "${WIN_SRC_DIR_NATIVE}\\scripts\\build-windows-local.ps1" \
 		-FlutterVersion "$FLUTTER_VERSION" \
 		-RustVersion "$RUST_VERSION" \
-		-VcpkgCommitId "$VCPKG_COMMIT_ID" ||
+		-VcpkgCommitId "$VCPKG_COMMIT_ID" \
+		-LlvmVersion "$LLVM_VERSION" ||
 		die "сборка на Windows не прошла"
 
 	local out="$WIN_SRC_DIR/flutter/build/windows/x64/runner/Release"
