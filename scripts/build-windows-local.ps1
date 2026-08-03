@@ -222,7 +222,9 @@ function Invoke-Build {
 	# абсолютными. Синхронизация из WSL их не привозит (исключены в rsync),
 	# поэтому создаём здесь. Заодно снимаем возможный остаток прежних прогонов.
 	Write-Step "Зависимости Dart (pub get)"
-	Remove-Item -Recurse -Force (Join-Path $SourceDir "flutter\.dart_tool") -ErrorAction SilentlyContinue
+	foreach ($stale in @("flutter\.dart_tool", "flutter\windows\flutter\ephemeral")) {
+		Remove-Item -Recurse -Force (Join-Path $SourceDir $stale) -ErrorAction SilentlyContinue
+	}
 	Push-Location (Join-Path $SourceDir "flutter")
 	flutter pub get
 	$pubOk = $LASTEXITCODE -eq 0

@@ -292,16 +292,18 @@ sync_to_windows() {
 	# target/ и flutter/build/ остаются на стороне Windows: это её артефакты, и
 	# таскать их через 9p значило бы каждый раз убивать инкрементальность.
 	#
-	# .dart_tool и .flutter-plugins* исключены по другой причине: это состояние
-	# конкретной машины. package_config.json содержит абсолютные пути к пакетам,
-	# и после `flutter pub get` в WSL там стоят /home/profax/.pub-cache/...
-	# Уехав на диск C:, такой файл заставляет Windows-сборку искать исходники
-	# по linux-путям, и она падает сотней «Error when reading». Пути пересоздаёт
-	# `flutter pub get` уже на хосте.
+	# Всё остальное в списке это состояние конкретной машины, и через границу
+	# WSL и Windows оно ехать не должно. Flutter записывает туда абсолютные
+	# пути: в package_config.json путями к пакетам, в ephemeral/.plugin_symlinks
+	# симлинками на них. После `pub get` в WSL это /home/profax/.pub-cache/...,
+	# и на диске C: сборка либо ищет исходники по linux-путям, либо натыкается
+	# на битые симлинки в CMake. Пересоздаётся всё это `pub get` уже на хосте,
+	# поэтому здесь ровно один принцип: едут только исходники.
 	rsync -a --delete \
 		--exclude 'target/' \
 		--exclude 'flutter/build/' \
 		--exclude '.dart_tool/' \
+		--exclude 'ephemeral/' \
 		--exclude '.flutter-plugins' \
 		--exclude '.flutter-plugins-dependencies' \
 		--exclude '.git/' \
