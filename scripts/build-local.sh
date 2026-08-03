@@ -104,7 +104,10 @@ FLUTTER_VERSION="$(workflow_env FLUTTER_VERSION)"
 ANDROID_FLUTTER_VERSION="$(workflow_env ANDROID_FLUTTER_VERSION)"
 VCPKG_COMMIT_ID="$(workflow_env VCPKG_COMMIT_ID)"
 NDK_VERSION="$(workflow_env NDK_VERSION)"
-LLVM_VERSION="$(workflow_env LLVM_VERSION)"
+# CI пинит LLVM 15.0.6, но под Windows у неё нет портативной сборки: только
+# установщик NSIS, требующий администратора. Берём ближайшую версию с архивом,
+# на которой bindgen разбирает заголовки aom верно (проверено), см. Install-Llvm
+WIN_LLVM_VERSION="18.1.8"
 CARGO_NDK_VERSION="$(workflow_env CARGO_NDK_VERSION)"
 
 export VCPKG_ROOT="$CACHE_DIR/vcpkg"
@@ -287,10 +290,20 @@ sync_to_windows() {
 	command -v rsync >/dev/null 2>&1 || die "нужен rsync: sudo apt-get install -y rsync"
 	mkdir -p "$WIN_SRC_DIR"
 	# target/ и flutter/build/ остаются на стороне Windows: это её артефакты, и
-	# таскать их через 9p значило бы каждый раз убивать инкрементальность
+	# таскать их через 9p значило бы каждый раз убивать инкрементальность.
+	#
+	# .dart_tool и .flutter-plugins* исключены по другой причине: это состояние
+	# конкретной машины. package_config.json содержит абсолютные пути к пакетам,
+	# и после `flutter pub get` в WSL там стоят /home/profax/.pub-cache/...
+	# Уехав на диск C:, такой файл заставляет Windows-сборку искать исходники
+	# по linux-путям, и она падает сотней «Error when reading». Пути пересоздаёт
+	# `flutter pub get` уже на хосте.
 	rsync -a --delete \
 		--exclude 'target/' \
 		--exclude 'flutter/build/' \
+		--exclude '.dart_tool/' \
+		--exclude '.flutter-plugins' \
+		--exclude '.flutter-plugins-dependencies' \
 		--exclude '.git/' \
 		"$REPO_ROOT/" "$WIN_SRC_DIR/"
 	echo "    $WIN_SRC_DIR"
@@ -313,7 +326,7 @@ windows_deps() {
 
 		Ставится Git, Python 3.12, Rustup, LLVM, CMake, NASM, Visual Studio 2022
 		Build Tools с рабочей нагрузкой C++, Flutter ${FLUTTER_VERSION}, vcpkg и
-		LLVM ${LLVM_VERSION} (пиновая: bindgen привязан к версии libclang).
+		LLVM ${WIN_LLVM_VERSION} (bindgen привязан к версии libclang).
 		Порядка 15 ГБ и около часа, один раз на машину.
 
 		После этого сборка запускается отсюда и уже без вас:
@@ -337,7 +350,7 @@ build_windows() {
 		-FlutterVersion "$FLUTTER_VERSION" \
 		-RustVersion "$RUST_VERSION" \
 		-VcpkgCommitId "$VCPKG_COMMIT_ID" \
-		-LlvmVersion "$LLVM_VERSION" ||
+		-LlvmVersion "$WIN_LLVM_VERSION" ||
 		die "сборка на Windows не прошла"
 
 	local out="$WIN_SRC_DIR/flutter/build/windows/x64/runner/Release"

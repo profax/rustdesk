@@ -27,7 +27,7 @@ param(
 	[string]$FlutterVersion = "3.24.5",
 	[string]$RustVersion = "1.75",
 	[string]$VcpkgCommitId = "120deac3062162151622ca4860575a33844ba10b",
-	[string]$LlvmVersion = "15.0.6"
+	[string]$LlvmVersion = "18.1.8"
 )
 
 $ErrorActionPreference = "Stop"
@@ -69,27 +69,60 @@ function Initialize-Paths {
 }
 
 # bindgen читает заголовки не компилятором MSVC, а libclang, и результат
-# зависит от её версии. На libclang 22 разбор заголовков aom и vpx рассыпается
-# молча: bindgen не падает, а отдаёт непрозрачные заглушки вида
-# `struct aom_codec_dec_cfg { _address: u8 }`, и сборка ломается уже в Rust на
-# «no field named threads». CI пинит LLVM ровно этой переменной, повторяем.
+# зависит от её версии. Проверено на этом проекте: с libclang 22.1.8 из winget
+# ровно две структуры из 41, `aom_codec_enc_cfg` и `aom_codec_dec_cfg`, выходят
+# непрозрачными заглушками `{ _address: u8 }`, и сборка ломается уже в Rust на
+# «no field named threads». Обе объявляются вперёд указателем в aom_codec.h и
+# определяются позже, в aom_decoder.h: препроцессор тело видит, а парсер этой
+# версии его к forward-декларации не привязывает. На libclang 18.1.8 те же
+# заголовки разбираются верно и сборка проходит.
+#
+# CI пинит LLVM_VERSION 15.0.6, но у неё под Windows нет портативной сборки,
+# только установщик NSIS, а он требует прав администратора и отказывается
+# вставать рядом с уже установленной LLVM. 18.1.8 распаковывается из архива в
+# кеш пользователя, поэтому вся цель windows обходится без UAC на сборках.
 function Install-Llvm {
 	if (Test-Path (Join-Path $LlvmRoot "bin\libclang.dll")) {
 		Write-Step "LLVM $LlvmVersion на месте"
 		return
 	}
-	Write-Step "LLVM $LlvmVersion (пиновая, как на CI)"
-	$exe = Join-Path $env:TEMP "LLVM-$LlvmVersion-win64.exe"
-	$url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$LlvmVersion/LLVM-$LlvmVersion-win64.exe"
-	Invoke-WebRequest -Uri $url -OutFile $exe -UseBasicParsing
-	# Установщик NSIS: /S тихий режим, /D обязан идти последним и без кавычек.
-	# -NoNewWindow с NSIS несовместим (InvalidOperationException), а установка
-	# в LOCALAPPDATA прав администратора не требует
-	Start-Process -FilePath $exe -ArgumentList "/S", "/D=$LlvmRoot" -Wait
-	Remove-Item $exe -ErrorAction SilentlyContinue
-	if (-not (Test-Path (Join-Path $LlvmRoot "bin\libclang.dll"))) {
-		Die "LLVM $LlvmVersion не установился в $LlvmRoot"
+	Write-Step "LLVM $LlvmVersion (портативная, без прав администратора)"
+	$archive = Join-Path $CacheDir "llvm-$LlvmVersion.tar.xz"
+	$url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$LlvmVersion/clang+llvm-$LlvmVersion-x86_64-pc-windows-msvc.tar.xz"
+	New-Item -ItemType Directory -Force -Path $CacheDir, $LlvmRoot | Out-Null
+	if (-not (Test-Path $archive)) {
+		Invoke-WebRequest -Uri $url -OutFile $archive -UseBasicParsing
 	}
+	# tar в Windows 10+ это bsdtar, .tar.xz он распаковывает сам
+	tar -xf $archive -C $LlvmRoot --strip-components=1
+	Remove-Item $archive -ErrorAction SilentlyContinue
+	if (-not (Test-Path (Join-Path $LlvmRoot "bin\libclang.dll"))) {
+		Die "LLVM $LlvmVersion не распаковалась в $LlvmRoot"
+	}
+}
+
+# Flutter создаёт симлинки на плагины, а Windows разрешает это обычному
+# пользователю только в режиме разработчика. Без него `flutter pub get` падает
+# уже в середине сборки, и сообщение теряется среди сотен строк MSBuild.
+# Проверяем заранее и говорим ровно то, что надо сделать.
+function Assert-DeveloperMode {
+	$key = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
+	$on = (Get-ItemProperty -Path $key -Name AllowDevelopmentWithoutDevLicense `
+			-ErrorAction SilentlyContinue).AllowDevelopmentWithoutDevLicense -eq 1
+	if ($on) { return }
+
+	Write-Host @"
+
+Ошибка: выключен режим разработчика Windows.
+
+Flutter создаёт симлинки на плагины, и без этого режима обычному пользователю
+это запрещено. Включается один раз, в PowerShell от администратора:
+
+    reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" /t REG_DWORD /f /v AllowDevelopmentWithoutDevLicense /d 1
+
+либо мышью: параметры → система → для разработчиков → режим разработчика.
+"@ -ForegroundColor Red
+	exit 1
 }
 
 function Install-Deps {
@@ -155,9 +188,11 @@ function Invoke-Build {
 	if (-not (Test-Path $SourceDir)) { Die "нет каталога с исходниками: $SourceDir. Сначала синхронизация из WSL" }
 	Initialize-Paths
 
-	if (-not (Test-Path (Join-Path $LlvmRoot "bin\libclang.dll"))) {
-		Die "нет пиновой LLVM $LlvmVersion в $LlvmRoot. Запустите с -Deps от администратора"
-	}
+	# LLVM ставится из архива в кеш пользователя и прав не требует, поэтому
+	# сборка добирает её сама, а не отправляет за отдельным запуском -Deps
+	Install-Llvm
+	Initialize-Paths
+	Assert-DeveloperMode
 
 	foreach ($tool in @("git", "python", "cargo", "flutter")) {
 		if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
@@ -183,6 +218,17 @@ function Invoke-Build {
 	# Та же строка, что в job build-for-windows-flutter. --skip-portable-pack
 	# оставляет распакованный каталог вместо самораспаковывающегося экзешника:
 	# для проверки правки он и нужен, а упаковка это лишние минуты
+	# Пути к пакетам Dart привязаны к машине: package_config.json хранит их
+	# абсолютными. Синхронизация из WSL их не привозит (исключены в rsync),
+	# поэтому создаём здесь. Заодно снимаем возможный остаток прежних прогонов.
+	Write-Step "Зависимости Dart (pub get)"
+	Remove-Item -Recurse -Force (Join-Path $SourceDir "flutter\.dart_tool") -ErrorAction SilentlyContinue
+	Push-Location (Join-Path $SourceDir "flutter")
+	flutter pub get
+	$pubOk = $LASTEXITCODE -eq 0
+	Pop-Location
+	if (-not $pubOk) { Die "flutter pub get не отработал" }
+
 	Write-Step "Сборка (build.py --portable --flutter --hwcodec --vram)"
 	python .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
 	if ($LASTEXITCODE -ne 0) { Die "build.py завершился с ошибкой" }
