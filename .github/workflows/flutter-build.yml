@@ -2411,7 +2411,12 @@ jobs:
       - name: Send Telegram notification
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_ADMIN_BOT_TOKEN }}
-          TG_CHAT_ID: "1011573605"
+          # Чат ops-бота. Секрет с запасным значением, а не голый литерал:
+          # тот же чат называется TG_ADMIN_CHAT_ID в .env на VPS, и один
+          # чат в двух видах рано или поздно разъезжается. Запасное значение
+          # оставлено намеренно: без него отсутствующий секрет молча
+          # выключил бы уведомление о готовой сборке
+          TG_CHAT_ID: ${{ secrets.TG_ADMIN_CHAT_ID || '1011573605' }}
           TG_THREAD_ID: ""
         run: |
           set -euo pipefail
