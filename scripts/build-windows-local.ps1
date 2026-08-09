@@ -57,7 +57,11 @@ function Initialize-Paths {
 			"$env:LOCALAPPDATA\Programs\Python\Python312",
 			"$env:LOCALAPPDATA\Programs\Python\Python312\Scripts",
 			"$env:ProgramFiles\Git\cmd",
-			"$env:ProgramFiles\NASM"
+			# NASM из winget ставится в пользовательскую область, а не в
+			# Program Files: перечислены обе, Add-ToPath молча пропускает
+			# несуществующую
+			"$env:ProgramFiles\NASM",
+			"$env:LOCALAPPDATA\bin\NASM"
 		)) { Add-ToPath $p }
 
 	# Пиновая LLVM идёт впереди системной, а LIBCLANG_PATH снимает догадки:

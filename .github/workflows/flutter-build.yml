@@ -43,6 +43,10 @@ on:
 # in this file!
 
 env:
+  # Литералами намеренно: адреса и публичный ключ сервера не секрет (они в DNS,
+  # на странице /support и внутри каждой опубликованной сборки), а пустая
+  # переменная собрала бы клиент, не знающий, куда подключаться. Секретом здесь
+  # является только то, что нельзя достать из готового клиента.
   RENDEZVOUS_SERVER: "www.armilen.ru:21116"
   RELAY_SERVER: "www.armilen.ru:21117"
   API_SERVER: "https://desk.armilen.ru"
@@ -967,8 +971,7 @@ jobs:
   # Silicon на странице загрузки. Отдельным джобом, а не внутри build-for-macOS:
   # тот собирает по одной архитектуре на разных раннерах и склеивать ему нечего.
   # Джоб аддитивный - если склейка сломается, обе поарочные сборки всё равно
-  # опубликованы своими джобами, и выкладка на сайт откатится на x86_64
-  # (см. matcher macos в armilen-site/scripts/deploy-clients.js).
+  # опубликованы своими джобами, и выкладка на сайт откатится на x86_64.
   build-macos-universal:
     name: macos universal dmg
     needs: [build-for-macOS]
@@ -2382,19 +2385,14 @@ jobs:
           files: |
             flutter/build/rustdesk-${{ env.VERSION }}-${{ env.RELEASE_NAME }}.tar.gz
 
-  # Armilen: уведомление в Telegram, что кастомная сборка ArmilenRemote готова
-  # (чисто информационное, без кнопки - деплой запускается тумблером в
-  # Sveltia CMS на armilen-site, см. ops/rustdesk-deploy-trigger.yaml там).
-  # needs перечисляет только 4 джоба, чьи артефакты реально потребляет
-  # armilen-site/scripts/deploy-clients.js (windows exe, macOS dmg, Linux
-  # AppImage, Android universal apk) - не весь список джобов workflow
-  # (ios/sciter/flatpak/web не деплоятся на сайт и падают по причинам, не
-  # связанным с этими 4 сборками, - незачем блокировать на них уведомление).
-  # Секреты и чат/топик - те же TG_BOT_TOKEN/REMOTE_CODE_CHAT_ID/
-  # REMOTE_CODE_THREAD_ID, что и коды /remote-ios в armilen-site
-  # (server/send-remote-code.mjs).
+  # Уведомление в Telegram о готовой кастомной сборке, с кнопкой запуска
+  # выкладки. needs перечисляет только 4 джоба, чьи артефакты реально
+  # выкладываются (windows exe, macOS dmg, Linux AppImage, Android universal
+  # apk), а не весь список джобов workflow: ios/sciter/flatpak/web не
+  # выкладываются и падают по причинам, не связанным с этими четырьмя, —
+  # незачем блокировать на них уведомление.
   notify-armilen-build-ready:
-    name: Notify Telegram (ArmilenRemote build ready)
+    name: Notify Telegram (build ready)
     # inputs.upload-artifact, не push/ref: этот reusable workflow вызывается и
     # обычным push-CI (flutter-ci.yml, upload-artifact: false - ничего не
     # публикует в релиз nightly) и flutter-nightly.yml (upload-artifact: true -
@@ -2411,17 +2409,17 @@ jobs:
       - name: Send Telegram notification
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_ADMIN_BOT_TOKEN }}
-          # Чат ops-бота. Секрет с запасным значением, а не голый литерал:
-          # тот же чат называется TG_ADMIN_CHAT_ID в .env на VPS, и один
-          # чат в двух видах рано или поздно разъезжается. Запасное значение
-          # оставлено намеренно: без него отсутствующий секрет молча
-          # выключил бы уведомление о готовой сборке
-          TG_CHAT_ID: ${{ secrets.TG_ADMIN_CHAT_ID || '1011573605' }}
+          # Только секрет, без запасного литерала: репозиторий публичный.
+          # Тот же чат называется TG_ADMIN_CHAT_ID и в .env на сервере, чтобы
+          # одно значение не разъехалось в двух видах. Если секрет не задан,
+          # шаг ниже молча выходит — это осознанно, уведомление не повод
+          # ронять сборку
+          TG_CHAT_ID: ${{ secrets.TG_ADMIN_CHAT_ID }}
           TG_THREAD_ID: ""
         run: |
           set -euo pipefail
           if [ -z "${TG_BOT_TOKEN:-}" ] || [ -z "${TG_CHAT_ID:-}" ]; then
-            echo "TG_BOT_TOKEN/REMOTE_CODE_CHAT_ID secret not set, skipping notification"
+            echo "TG_ADMIN_BOT_TOKEN/TG_ADMIN_CHAT_ID secret not set, skipping notification"
             exit 0
           fi
           SERVER_URL=$(curl -sS -X POST "https://www.armilen.ru/api/version-check" -H "Content-Type: application/json" -d "{}" | jq -r ".url")

@@ -51,8 +51,7 @@ runs:
         # rs-ny.rustdesk.com (чужой сервер, платный трафик и чужая точка
         # доверия), а UI показывает "настройте собственный сервер" - хотя
         # свой ID/relay (hbbs/hbbr) у нас уже поднят. Значения те же, что
-        # даём вручную для официального iOS-клиента (src/content/guides/
-        # remote-ios.yaml в armilen-site).
+        # даём вручную для официального iOS-клиента.
         sed -i.bak 's/RENDEZVOUS_SERVERS: &\[&str\] = &\["rs-ny\.rustdesk\.com"\]/RENDEZVOUS_SERVERS: \&[\&str] = \&["www.armilen.ru"]/' "$cfg"
         sed -i.bak 's#RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";#RS_PUB_KEY: \&str = "GYxvuB12rp2WdQoykP0y2Whrw9sD7hpPJkTlp8LS7C0=";#' "$cfg"
         rm -f "$cfg.bak"
@@ -73,8 +72,8 @@ runs:
           exit 1
         fi
         # Свой апдейт-чек: api.rustdesk.com/version/latest заменяем на наш
-        # эндпойнт (armilen-site server/lead-server.mjs), чтобы кастомные
-        # клиенты узнавали о новых сборках, а не молчали или не дёргали офф. апстрим.
+        # эндпойнт, чтобы кастомные клиенты узнавали о новых сборках, а не
+        # молчали и не дёргали официальный апстрим.
         sed -i.bak 's#const URL: &str = "https://api.rustdesk.com/version/latest";#const URL: \&str = "https://www.armilen.ru/api/version-check";#' "$cfg"
         rm -f "$cfg.bak"
         grep -F 'const URL: &str' "$cfg"
@@ -88,7 +87,7 @@ runs:
           echo "Branding already applied, skipping"
           exit 0
         fi
-        # Клиент и гайд armilen-site (/remote-ios) должны звать поля одинаково,
+        # Клиент и наша инструкция по настройке должны звать поля одинаково,
         # иначе инструкция расходится с тем, что человек видит на экране.
         # Апстримный перевод зовёт их «Сервер ID», «Ретранслятор», «Сервер API»,
         # а ключ не переводит вовсе.

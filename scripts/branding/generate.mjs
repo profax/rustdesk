@@ -5,10 +5,10 @@
 // (legacy + round + adaptive foreground + status-bar), Flutter in-app logos and
 // the Linux res/*.png set. Idempotent: rerun after editing any src SVG.
 //
-// Needs `sharp`. The fork has no node_modules, so run it resolving sharp from
-// the main site checkout, e.g.:
-//   NODE_PATH=/home/profax/armilen-site/node_modules \
-//     node scripts/branding/generate.mjs
+// Needs `sharp`. The fork has no node_modules of its own, so sharp is resolved
+// from a sibling checkout that has it. That sibling is the default; point
+// SHARP_FROM elsewhere when it lives somewhere else:
+//   SHARP_FROM=/path/to/checkout/node_modules node scripts/branding/generate.mjs
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
