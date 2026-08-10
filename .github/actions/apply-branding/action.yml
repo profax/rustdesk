@@ -134,3 +134,32 @@ runs:
         sed -i.bak 's#("My address book", "Моя адресная книга")#("My address book", "Личные")#' "$cfg"
         rm -f "$cfg.bak"
         grep -F '("My address book"' "$cfg"
+
+    - name: Name privacy mode implementations by what they do in src/lang
+      shell: bash
+      run: |
+        set -euo pipefail
+        cfg="src/lang/ru.rs"
+        if grep -qF '("privacy_mode_impl_mag_tip", "Затемнить физический экран"),' "$cfg"; then
+          echo "Branding already applied, skipping"
+          exit 0
+        fi
+        # Апстрим зовёт две реализации режима конфиденциальности «Режим 1» и
+        # «Режим 2». Выбрать между ними по таким названиям нельзя: они не
+        # говорят ни что произойдёт с экраном клиента, ни почему один из них
+        # может не заработать.
+        #
+        # По сути: mag гасит существующий физический экран через Magnification
+        # API, virtual display переключает вывод на виртуальный дисплей, и
+        # физический остаётся тёмным. Первый проще и работает почти везде,
+        # второй требует драйвера виртуального дисплея.
+        for old in '("privacy_mode_impl_mag_tip", "Режим 1"),' '("privacy_mode_impl_virtual_display_tip", "Режим 2"),'; do
+          if ! grep -qF "$old" "$cfg"; then
+            echo "::error file=$cfg::$old not found, upstream changed the translation; update this action"
+            exit 1
+          fi
+        done
+        sed -i.bak 's#("privacy_mode_impl_mag_tip", "Режим 1")#("privacy_mode_impl_mag_tip", "Затемнить физический экран")#' "$cfg"
+        sed -i.bak 's#("privacy_mode_impl_virtual_display_tip", "Режим 2")#("privacy_mode_impl_virtual_display_tip", "Переключить на виртуальный дисплей")#' "$cfg"
+        rm -f "$cfg.bak"
+        grep -F -e '("privacy_mode_impl_mag_tip"' -e '("privacy_mode_impl_virtual_display_tip"' "$cfg"
