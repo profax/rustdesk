@@ -140,7 +140,7 @@ runs:
       run: |
         set -euo pipefail
         cfg="src/lang/ru.rs"
-        if grep -qF '("privacy_mode_impl_mag_tip", "Затемнить физический экран"),' "$cfg"; then
+        if grep -qF '("privacy_mode_impl_mag_tip", "Затемнение экрана (без драйвера)"),' "$cfg"; then
           echo "Branding already applied, skipping"
           exit 0
         fi
@@ -149,17 +149,21 @@ runs:
         # говорят ни что произойдёт с экраном клиента, ни почему один из них
         # может не заработать.
         #
-        # По сути: mag гасит существующий физический экран через Magnification
-        # API, virtual display переключает вывод на виртуальный дисплей, и
-        # физический остаётся тёмным. Первый проще и работает почти везде,
-        # второй требует драйвера виртуального дисплея.
+        # По сути: mag рисует чёрное окно поверх настоящего экрана через
+        # Magnification API (или WDA_EXCLUDEFROMCAPTURE), физический монитор
+        # включён и показывает черноту; virtual display создаёт виртуальный
+        # монитор, уводит сеанс на него, а физические отключает. Первый
+        # работает почти везде без установки, второй требует установленной
+        # службы и драйвера виртуального дисплея, поэтому в названии стоит
+        # именно требование: оно объясняет, почему пункта может не быть
+        # в меню или почему он не сработал.
         for old in '("privacy_mode_impl_mag_tip", "Режим 1"),' '("privacy_mode_impl_virtual_display_tip", "Режим 2"),'; do
           if ! grep -qF "$old" "$cfg"; then
             echo "::error file=$cfg::$old not found, upstream changed the translation; update this action"
             exit 1
           fi
         done
-        sed -i.bak 's#("privacy_mode_impl_mag_tip", "Режим 1")#("privacy_mode_impl_mag_tip", "Затемнить физический экран")#' "$cfg"
-        sed -i.bak 's#("privacy_mode_impl_virtual_display_tip", "Режим 2")#("privacy_mode_impl_virtual_display_tip", "Переключить на виртуальный дисплей")#' "$cfg"
+        sed -i.bak 's#("privacy_mode_impl_mag_tip", "Режим 1")#("privacy_mode_impl_mag_tip", "Затемнение экрана (без драйвера)")#' "$cfg"
+        sed -i.bak 's#("privacy_mode_impl_virtual_display_tip", "Режим 2")#("privacy_mode_impl_virtual_display_tip", "Виртуальный монитор (нужен драйвер)")#' "$cfg"
         rm -f "$cfg.bak"
         grep -F -e '("privacy_mode_impl_mag_tip"' -e '("privacy_mode_impl_virtual_display_tip"' "$cfg"
