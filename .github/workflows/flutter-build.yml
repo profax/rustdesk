@@ -427,7 +427,7 @@ jobs:
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         if: env.UPLOAD_ARTIFACT == 'true'
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             ./SignOutput/rustdesk-*.msi
@@ -593,7 +593,7 @@ jobs:
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         if: env.UPLOAD_ARTIFACT == 'true'
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             ./SignOutput/rustdesk-*.exe
@@ -728,7 +728,7 @@ jobs:
       #   # if: env.ANDROID_SIGNING_KEY != null && env.UPLOAD_ARTIFACT == 'true'
       #   uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
       #   with:
-      #     prerelease: true
+      #     prerelease: ${{ inputs.upload-tag == 'nightly' }}
       #     tag_name: ${{ env.TAG_NAME }}
       #     files: |
       #       flutter/build/ios/ipa/*.ipa
@@ -962,7 +962,7 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             rustdesk*-${{ matrix.job.arch }}.dmg
@@ -1026,7 +1026,7 @@ jobs:
       - name: Publish universal dmg
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: rustdesk-${{ env.VERSION }}-universal.dmg
 
@@ -1072,7 +1072,7 @@ jobs:
       - name: Publish unsigned app
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: rustdesk-${{ env.VERSION }}-unsigned.tar.gz
 
@@ -1365,7 +1365,7 @@ jobs:
         if: env.ANDROID_SIGNING_KEY != null && env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
@@ -1374,7 +1374,7 @@ jobs:
         if: env.ANDROID_SIGNING_KEY == null && env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             signed-apk/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.apk
@@ -1560,7 +1560,7 @@ jobs:
         if: env.ANDROID_SIGNING_KEY != null && env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
@@ -1569,7 +1569,7 @@ jobs:
         if: env.ANDROID_SIGNING_KEY == null && env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
@@ -1883,7 +1883,7 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             rustdesk-*.deb
@@ -1919,7 +1919,7 @@ jobs:
         if: matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             res/rustdesk-${{ env.VERSION }}*.zst
@@ -2152,7 +2152,7 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}-sciter.deb
@@ -2214,7 +2214,7 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             ./appimage/rustdesk-${{ env.VERSION }}-*.AppImage
@@ -2304,7 +2304,7 @@ jobs:
       - name: Publish flatpak package
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             flatpak/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.flatpak
@@ -2380,10 +2380,47 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
-          prerelease: true
+          prerelease: ${{ inputs.upload-tag == 'nightly' }}
           tag_name: ${{ env.TAG_NAME }}
           files: |
             flutter/build/rustdesk-${{ env.VERSION }}-${{ env.RELEASE_NAME }}.tar.gz
+
+  # Тело релиза задаём явно. Пустое тело GitHub замещает сообщением коммита,
+  # на который указывает тег, а тег nightly едет за master — то есть на
+  # странице релиза оказывался внутренний разбор причин, написанный для себя,
+  # а не для того, кто пришёл скачать клиент.
+  #
+  # Отдельным джобом, а не шагом уведомления: тот ждёт четыре сборки сразу и
+  # пропускается, если хоть одна не отработала, а текст релиза от их успеха
+  # не зависит. Зависимость от build-appimage нужна только затем, чтобы релиз
+  # к этому моменту уже существовал: PATCH создать его не может.
+  set-release-notes:
+    name: Set release notes
+    if: inputs.upload-artifact == true
+    needs: [build-appimage]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Write release body
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.upload-tag }}
+        run: |
+          set -euo pipefail
+          # PATCH идёт по идентификатору релиза: адреса /releases/tags/<tag>
+          # у этого метода нет, по тегу релиз можно только прочитать.
+          id=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq .id)
+          read -r -d '' NOTES <<'EOF' || true
+          Кастомная сборка ArmDesk на базе RustDesk (AGPL-3.0).
+
+          Клиенты для пользователей: https://www.armilen.ru/support
+          Политика конфиденциальности: https://www.armilen.ru/legal/armdesk-privacy
+
+          Релиз скользящий: содержимое соответствует текущему состоянию ветки master.
+          EOF
+          gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${id}" \
+            -f body="$NOTES" --jq '.html_url'
 
   # Уведомление в Telegram о готовой кастомной сборке, с кнопкой запуска
   # выкладки. needs перечисляет только 4 джоба, чьи артефакты реально
@@ -2408,28 +2445,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      # Тело релиза задаём явно. Пустое тело GitHub замещает сообщением
-      # коммита, на который указывает тег, а тег nightly едет за master —
-      # то есть на странице релиза оказывался внутренний разбор причин,
-      # написанный для себя, а не для того, кто пришёл скачать клиент.
-      - name: Set release notes
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ env.TAG_NAME }}
-        run: |
-          set -euo pipefail
-          read -r -d '' NOTES <<'EOF' || true
-          Кастомная сборка ArmDesk на базе RustDesk (AGPL-3.0).
-
-          Клиенты для пользователей: https://www.armilen.ru/support
-          Политика конфиденциальности: https://www.armilen.ru/legal/armdesk-privacy
-
-          Релиз скользящий: содержимое соответствует текущему состоянию ветки master.
-          EOF
-          gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
-            -f body="$NOTES" --jq '.html_url' ||
-            echo "не удалось задать тело релиза, продолжаем"
-
       - name: Send Telegram notification
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_ADMIN_BOT_TOKEN }}
