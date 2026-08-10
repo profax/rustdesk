@@ -2090,7 +2090,94 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
     ThrottledInterval::new(i)
 }
 
+// Значения по умолчанию для сборок ArmDesk.
+//
+// Кладём их в DEFAULT_*-карты, которые Config::get_option просматривает
+// последними: OVERWRITE_* → выбор пользователя → DEFAULT_*. То есть это именно
+// «как будет, пока человек не решил иначе», а не запрет: любую из этих настроек
+// он меняет в интерфейсе, и его выбор перекрывает наш.
+//
+// Через тот же applier, что и штатный механизм кастомного клиента, а не своей
+// записью в карты: у него уже разобрано, какой ключ в какую из четырёх карт
+// ложится. Штатным путём воспользоваться нельзя, конфиг там проверяется
+// подписью на закрытом ключе RustDesk.
+//
+// "Y"/"N", а не true/false: applier принимает только строки, а option2bool
+// трактует "Y" как включено для всех групп ключей, включая allow-* и
+// direct-server, где любое другое значение читается как выключено.
+pub fn apply_armilen_default_settings() {
+    let defaults = serde_json::json!({
+        // Наша сторона: как мы смотрим на чужой экран
+        "view_style": "adaptive",
+        "scroll_style": "scrollauto",
+        "image_quality": "best",
+        "codec-preference": "auto",
+        "trackpad-speed": "100",
+        "show_remote_cursor": "Y",
+        "disable_audio": "Y",
+        "enable-file-copy-paste": "Y",
+        "displays_as_individual_windows": "Y",
+        "use_all_my_displays_for_the_remote_session": "Y",
+        "terminal-persistent": "Y",
+        "enable-confirm-closing-tabs": "Y",
+        "enable-open-new-connections-in-tabs": "Y",
+        "use-texture-render": "Y",
+        // Кнопка блокировки ввода на удалённой стороне остаётся доступной:
+        // сеанс начинается с обычного управления, оператор блокирует руками
+        "enable-block-input": "Y",
+
+        // Приложение целиком
+        "theme": "system",
+        "lang": "ru",
+        "enable-abr": "Y",
+        "enable-hwcodec": "Y",
+        "enable-directx-capture": "Y",
+        "allow-auto-update": "Y",
+        "enable-check-update": "Y",
+
+        // Сторона, к которой подключаются: поведение машины клиента
+        "verification-method": "use-both-passwords",
+        "temporary-password-length": "8",
+        "allow-numeric-one-time-password": "Y",
+        "direct-server": "Y",
+        "keep-awake-during-incoming-sessions": "Y",
+        "keep-awake-during-outgoing-sessions": "Y",
+        // approve-mode намеренно не задаём: пустое значение и означает «и по
+        // паролю, и по кнопке». "password" и "click" оставили бы только один
+        // способ
+    });
+
+    let mut map_display_settings = HashMap::new();
+    for s in keys::KEYS_DISPLAY_SETTINGS {
+        map_display_settings.insert(s.replace("_", "-"), s);
+    }
+    let mut map_local_settings = HashMap::new();
+    for s in keys::KEYS_LOCAL_SETTINGS {
+        map_local_settings.insert(s.replace("_", "-"), s);
+    }
+    let mut map_settings = HashMap::new();
+    for s in keys::KEYS_SETTINGS {
+        map_settings.insert(s.replace("_", "-"), s);
+    }
+    let mut buildin_settings = HashMap::new();
+    for s in keys::KEYS_BUILDIN_SETTINGS {
+        buildin_settings.insert(s.replace("_", "-"), s);
+    }
+
+    read_custom_client_advanced_settings(
+        defaults,
+        &map_display_settings,
+        &map_local_settings,
+        &map_settings,
+        &buildin_settings,
+        false,
+    );
+}
+
 pub fn load_custom_client() {
+    // Раньше подписанного конфига: если он когда-нибудь появится, его значения
+    // перезапишут наши, а не наоборот
+    apply_armilen_default_settings();
     #[cfg(debug_assertions)]
     if let Ok(data) = std::fs::read_to_string("./custom.txt") {
         read_custom_client(data.trim());
