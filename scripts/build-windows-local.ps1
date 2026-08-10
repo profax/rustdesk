@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Сборка Armilen Remote под Windows на самой Windows.
+    Сборка ArmDesk под Windows на самой Windows.
 
 .DESCRIPTION
     Запускается не руками, а из WSL через scripts/build-local.sh --target windows.

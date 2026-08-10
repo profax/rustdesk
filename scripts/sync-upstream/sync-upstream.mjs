@@ -1,4 +1,4 @@
-// Upstream sync for the Armilen Remote fork.
+// Upstream sync for the ArmDesk fork.
 //
 // Watches rustdesk/rustdesk for new *stable* release tags (plain semver, e.g.
 // 1.4.8 — nightly/pre-release tags are ignored) and, when one appears, merges
@@ -197,7 +197,7 @@ async function main() {
 		// Record the conflicting tag so we don't re-alert every timer tick, but
 		// leave lastTag untouched so a resolved sync is still recognised as new.
 		writeState({ ...state, conflictTag: latest, conflictAt: new Date().toISOString() });
-		const msg = `⚠️ Armilen Remote: конфликт при слиянии upstream ${latest}. Требуется ручное разрешение.\nФайлы:\n${conflicts || "(unknown)"}`;
+		const msg = `⚠️ ArmDesk: конфликт при слиянии upstream ${latest}. Требуется ручное разрешение.\nФайлы:\n${conflicts || "(unknown)"}`;
 		log(msg);
 		await notify(msg);
 		process.exitCode = 1;
@@ -255,13 +255,13 @@ async function main() {
 
 	git("checkout", BASE_BRANCH);
 	writeState({ lastTag: latest, syncedAt: new Date().toISOString(), branch });
-	const done = `✅ Armilen Remote: upstream ${latest} слит в ветку ${branch}, PR открыт, сборка запущена. Проверьте PR перед мержем в ${BASE_BRANCH}.`;
+	const done = `✅ ArmDesk: upstream ${latest} слит в ветку ${branch}, PR открыт, сборка запущена. Проверьте PR перед мержем в ${BASE_BRANCH}.`;
 	log(done);
 	await notify(done);
 }
 
 main().catch(async (err) => {
 	log(`FATAL: ${err.message}`);
-	await notify(`❌ Armilen Remote upstream-sync упал: ${err.message}`);
+	await notify(`❌ ArmDesk upstream-sync упал: ${err.message}`);
 	process.exit(1);
 });

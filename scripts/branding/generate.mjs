@@ -1,4 +1,4 @@
-// Armilen Remote brand-asset generator.
+// ArmDesk brand-asset generator.
 //
 // Rasterizes the brand SVGs in scripts/branding/src/ into every icon target the
 // desktop/mobile builds consume: Windows .ico, macOS .icns, Android mipmaps

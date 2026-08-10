@@ -1,4 +1,4 @@
-# Upstream sync (Armilen Remote fork)
+# Upstream sync (ArmDesk fork)
 
 Watches `rustdesk/rustdesk` for new **stable** release tags (plain semver, e.g.
 `1.4.8`; nightly/pre-release tags are ignored) and, on a new one, merges it onto

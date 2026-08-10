@@ -96,8 +96,17 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "com.carriez.flutter_hbb"
+        // Своё имя пакета, а не апстримное com.carriez.flutter_hbb: Android
+        // различает приложения именно по нему, и с чужим ArmDesk и официальный
+        // RustDesk не могут стоять на одном устройстве, а обновление одного
+        // затирает другое. Меняется только applicationId; package в манифесте
+        // (пространство имён Kotlin-классов) остаётся апстримным, иначе
+        // пришлось бы переносить исходники и ловить конфликты на каждой
+        // синхронизации.
+        //
+        // Смена рвёт цепочку обновлений: установленное приложение со старым id
+        // новое не увидит и встанет рядом, старое надо снести руками.
+        applicationId "ru.armilen.armdesk"
         minSdkVersion 22
         targetSdkVersion 33
         versionCode flutterVersionCode.toInteger()

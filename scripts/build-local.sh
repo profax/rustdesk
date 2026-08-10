@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Локальная сборка Armilen Remote: проверить правку до пуша, не дожидаясь часа
+# Локальная сборка ArmDesk: проверить правку до пуша, не дожидаясь часа
 # GitHub Actions и ничего никуда не выкладывая.
 #
 # Выигрыш не в том, что машина быстрее раннера (она медленнее), а в том, что
@@ -124,7 +124,7 @@ fi
 export FLUTTER_ROOT
 export PATH="$FLUTTER_ROOT/bin:$CARGO_HOME/bin:$PATH"
 
-log "Armilen Remote, локальная сборка (цель: $TARGET)"
+log "ArmDesk, локальная сборка (цель: $TARGET)"
 echo "    Rust    $RUST_VERSION"
 echo "    Кеш     $CACHE_DIR"
 

@@ -1,5 +1,5 @@
 [Unit]
-Description=Periodic upstream-release check for the Armilen Remote fork
+Description=Periodic upstream-release check for the ArmDesk fork
 
 [Timer]
 # RustDesk cuts a stable release every few weeks; a daily check is ample.

@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=ArmilenRemote
+Name=ArmDesk
 NoDisplay=true
 MimeType=x-scheme-handler/rustdesk;
 TryExec=rustdesk

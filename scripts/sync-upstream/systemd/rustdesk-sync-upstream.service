@@ -1,5 +1,5 @@
 [Unit]
-Description=Sync Armilen Remote fork with upstream RustDesk stable releases
+Description=Sync ArmDesk fork with upstream RustDesk stable releases
 Documentation=file:///opt/rustdesk-fork/scripts/sync-upstream/README.md
 # Needs the network up (git fetch / gh API) before it can do anything useful.
 After=network-online.target

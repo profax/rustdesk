@@ -1,4 +1,4 @@
-# Armilen Remote
+# ArmDesk
 
 Форк клиента [RustDesk](https://github.com/rustdesk/rustdesk) для ИТ-студии
 ARMILEN. Собран с предустановленным подключением к нашей инфраструктуре и

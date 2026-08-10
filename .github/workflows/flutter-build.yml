@@ -924,7 +924,7 @@ jobs:
           CREATE_DMG="$(command -v create-dmg)"
           CREATE_DMG="$(readlink -f "$CREATE_DMG")"
           sed -i -e 's/MAXIMUM_UNMOUNTING_ATTEMPTS=3/MAXIMUM_UNMOUNTING_ATTEMPTS=7/' "$CREATE_DMG"
-          create-dmg --icon "ArmilenRemote.app" 200 190 --hide-extension "ArmilenRemote.app" --window-size 800 400 --app-drop-link 600 185 rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg "./flutter/build/macos/Build/Products/Release/ArmilenRemote.app"
+          create-dmg --icon "ArmDesk.app" 200 190 --hide-extension "ArmDesk.app" --window-size 800 400 --app-drop-link 600 185 rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg "./flutter/build/macos/Build/Products/Release/ArmDesk.app"
 
       - name: Upload unsigned macOS app
         if: env.UPLOAD_ARTIFACT == 'true'
@@ -945,8 +945,8 @@ jobs:
           security unlock-keychain -p ${{ secrets.MACOS_P12_PASSWORD }} rustdesk.keychain
           # start sign the rustdesk.app and dmg
           rm -rf *.dmg || true
-          codesign --force --options runtime -s ${{ secrets.MACOS_CODESIGN_IDENTITY }} --deep --strict "./flutter/build/macos/Build/Products/Release/ArmilenRemote.app" -vvv
-          create-dmg --icon "ArmilenRemote.app" 200 190 --hide-extension "ArmilenRemote.app" --window-size 800 400 --app-drop-link 600 185 rustdesk-${{ env.VERSION }}.dmg "./flutter/build/macos/Build/Products/Release/ArmilenRemote.app"
+          codesign --force --options runtime -s ${{ secrets.MACOS_CODESIGN_IDENTITY }} --deep --strict "./flutter/build/macos/Build/Products/Release/ArmDesk.app" -vvv
+          create-dmg --icon "ArmDesk.app" 200 190 --hide-extension "ArmDesk.app" --window-size 800 400 --app-drop-link 600 185 rustdesk-${{ env.VERSION }}.dmg "./flutter/build/macos/Build/Products/Release/ArmDesk.app"
           codesign --force --options runtime -s ${{ secrets.MACOS_CODESIGN_IDENTITY }} --deep --strict rustdesk-${{ env.VERSION }}.dmg -vvv
           # notarize the rustdesk-${{ env.VERSION }}.dmg
           rcodesign notary-submit --api-key-path ${{ github.workspace }}/rustdesk.json  --staple rustdesk-${{ env.VERSION }}.dmg
@@ -1002,16 +1002,16 @@ jobs:
             dmg=$(ls ./dmg-$arch/*.dmg)
             mnt=$(mktemp -d)
             hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt"
-            cp -R "$mnt/ArmilenRemote.app" "./ArmilenRemote-$arch.app"
+            cp -R "$mnt/ArmDesk.app" "./ArmDesk-$arch.app"
             hdiutil detach "$mnt"
           done
 
       - name: Merge into a universal bundle
         run: |
           scripts/macos-universal.sh \
-            ./ArmilenRemote-x86_64.app \
-            ./ArmilenRemote-aarch64.app \
-            ./ArmilenRemote.app
+            ./ArmDesk-x86_64.app \
+            ./ArmDesk-aarch64.app \
+            ./ArmDesk.app
 
       - name: Create universal dmg
         run: |
@@ -1019,9 +1019,9 @@ jobs:
           brew install create-dmg
           CREATE_DMG="$(readlink -f "$(command -v create-dmg)")"
           sed -i -e 's/MAXIMUM_UNMOUNTING_ATTEMPTS=3/MAXIMUM_UNMOUNTING_ATTEMPTS=7/' "$CREATE_DMG"
-          create-dmg --icon "ArmilenRemote.app" 200 190 --hide-extension "ArmilenRemote.app" \
+          create-dmg --icon "ArmDesk.app" 200 190 --hide-extension "ArmDesk.app" \
             --window-size 800 400 --app-drop-link 600 185 \
-            rustdesk-${{ env.VERSION }}-universal.dmg ./ArmilenRemote.app
+            rustdesk-${{ env.VERSION }}-universal.dmg ./ArmDesk.app
 
       - name: Publish universal dmg
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
@@ -2405,7 +2405,31 @@ jobs:
       - build-appimage
       - build-rustdesk-android-universal
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      # Тело релиза задаём явно. Пустое тело GitHub замещает сообщением
+      # коммита, на который указывает тег, а тег nightly едет за master —
+      # то есть на странице релиза оказывался внутренний разбор причин,
+      # написанный для себя, а не для того, кто пришёл скачать клиент.
+      - name: Set release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ env.TAG_NAME }}
+        run: |
+          set -euo pipefail
+          read -r -d '' NOTES <<'EOF' || true
+          Кастомная сборка ArmDesk на базе RustDesk (AGPL-3.0).
+
+          Клиенты для пользователей: https://www.armilen.ru/support
+          Политика конфиденциальности: https://www.armilen.ru/legal/armdesk-privacy
+
+          Релиз скользящий: содержимое соответствует текущему состоянию ветки master.
+          EOF
+          gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
+            -f body="$NOTES" --jq '.html_url' ||
+            echo "не удалось задать тело релиза, продолжаем"
+
       - name: Send Telegram notification
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_ADMIN_BOT_TOKEN }}
@@ -2430,7 +2454,7 @@ jobs:
           SHORT_SHA="${GITHUB_SHA:0:7}"
           PAYLOAD=$(jq -n \
             --arg chat_id "$TG_CHAT_ID" \
-            --arg text "🖥 Новая сборка ArmilenRemote ${VERSION} (${SHORT_SHA}) готова. Нажмите кнопку ниже для деплоя на сервер." \
+            --arg text "🖥 Новая сборка ArmDesk ${VERSION} (${SHORT_SHA}) готова. Нажмите кнопку ниже для деплоя на сервер." \
             --arg cb "deploy:rustdesk:${SHORT_SHA}" \
             '{chat_id: $chat_id, text: $text, parse_mode: "HTML", reply_markup: {inline_keyboard: [[{text: "🚀 Деплой на сервер", callback_data: $cb}]]}}')
           curl -sS -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \

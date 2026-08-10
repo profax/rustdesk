@@ -9,12 +9,12 @@ description: >
 runs:
   using: composite
   steps:
-    - name: Set APP_NAME to ArmilenRemote in libs/hbb_common
+    - name: Set APP_NAME to ArmDesk in libs/hbb_common
       shell: bash
       run: |
         set -euo pipefail
         cfg="libs/hbb_common/src/config.rs"
-        if grep -qF 'RwLock::new("ArmilenRemote".to_owned())' "$cfg"; then
+        if grep -qF 'RwLock::new("ArmDesk".to_owned())' "$cfg"; then
           echo "Branding already applied, skipping"
           exit 0
         fi
@@ -22,11 +22,11 @@ runs:
           echo "::error file=$cfg::APP_NAME pattern not found, upstream changed the line; update this action"
           exit 1
         fi
-        # Без пробела: "Armilen Remote" ломал парсинг аргументов cmd.exe в
+        # Без пробела: "ArmDesk" ломал парсинг аргументов cmd.exe в
         # windows.rs (reg add/rename видели "Remote" отдельным токеном) -
         # чинили кавычками, но проще и надёжнее убрать пробел у источника.
         # -i.bak + rm работает и с GNU sed (Linux, Git Bash на Windows), и с BSD sed (macOS)
-        sed -i.bak 's/APP_NAME: RwLock<String> = RwLock::new("RustDesk"\.to_owned())/APP_NAME: RwLock<String> = RwLock::new("ArmilenRemote".to_owned())/' "$cfg"
+        sed -i.bak 's/APP_NAME: RwLock<String> = RwLock::new("RustDesk"\.to_owned())/APP_NAME: RwLock<String> = RwLock::new("ArmDesk".to_owned())/' "$cfg"
         rm -f "$cfg.bak"
         grep -F 'APP_NAME: RwLock' "$cfg"
 
