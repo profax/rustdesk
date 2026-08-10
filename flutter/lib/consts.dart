@@ -226,7 +226,7 @@ const String kArmilenSiteUrl = "https://www.armilen.ru";
 // Where "a new version is available" sends people: the support page carries the
 // per-platform download buttons, so it works for every client we build.
 const String kArmilenDownloadUrl = "$kArmilenSiteUrl/support";
-const String kArmilenPrivacyUrl = "$kArmilenSiteUrl/legal/remote-privacy";
+const String kArmilenPrivacyUrl = "$kArmilenSiteUrl/legal/armdesk-privacy";
 
 const String kTabLabelHomePage = "Home";
 const String kTabLabelSettingPage = "Settings";
