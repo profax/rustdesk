@@ -16,9 +16,9 @@
        corners in Explorer, on the taskbar and in the installer. -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#16a34a"/>
-      <stop offset="0.5" stop-color="#15803d"/>
-      <stop offset="1" stop-color="#166534"/>
+      <stop offset="0" stop-color="#059669"/>
+      <stop offset="0.5" stop-color="#047857"/>
+      <stop offset="1" stop-color="#065f46"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="96" fill="url(#bg)"/>

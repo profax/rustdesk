@@ -255,10 +255,10 @@ class MyTheme {
   // on light surfaces, green-500 on dark ones. Site light theme deliberately
   // avoids green-500 because it only reaches 2.25:1 on white, so pick by theme
   // rather than reaching for whichever one is nearer.
-  static const Color accent = Color(0xFF15803D); // green-700
-  static const Color accentBright = Color(0xFF22C55E); // green-500
-  static const Color accent50 = Color(0x7715803D);
-  static const Color accent80 = Color(0xAA15803D);
+  static const Color accent = Color(0xFF047857); // green-700 (armilen-site DESIGN.md)
+  static const Color accentBright = Color(0xFF10B981); // green-500 (armilen-site DESIGN.md)
+  static const Color accent50 = Color(0x77047857);
+  static const Color accent80 = Color(0xAA047857);
   static const Color canvasColor = Color(0xFF212121);
   static const Color border = Color(0xFFCCCCCC);
   static const Color idColor = accentBright;

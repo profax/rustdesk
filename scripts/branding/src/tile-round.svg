@@ -3,9 +3,9 @@
        Same green-700 gradient as tile-dark.svg. -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#16a34a"/>
-      <stop offset="0.5" stop-color="#15803d"/>
-      <stop offset="1" stop-color="#166534"/>
+      <stop offset="0" stop-color="#059669"/>
+      <stop offset="0.5" stop-color="#047857"/>
+      <stop offset="1" stop-color="#065f46"/>
     </linearGradient>
   </defs>
   <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
