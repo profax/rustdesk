@@ -130,13 +130,23 @@ class _FixedWidthButtonState extends State<FixedWidthButton> {
             width: widget.width,
             padding: EdgeInsets.all(widget.padding ?? 4.5),
             alignment: Alignment.center,
+            // Armilen: a pressed outline button stays in its own palette instead
+            // of flooding with the brand accent. The install card paints itself
+            // over a pink gradient with a white outline button, and filling that
+            // button green on tap dropped a colour from another world onto the
+            // card for the length of the press. Filled buttons keep the accent
+            // exactly as before: there the accent IS the button's own colour.
             decoration: BoxDecoration(
               color: pressed.value
-                  ? MyTheme.accent
+                  ? (widget.isOutline
+                      ? (widget.borderColor ?? MyTheme.border).withOpacity(0.22)
+                      : MyTheme.accent)
                   : (widget.isOutline ? Colors.transparent : MyTheme.button),
               border: Border.all(
                 color: pressed.value
-                    ? MyTheme.accent
+                    ? (widget.isOutline
+                        ? widget.borderColor ?? MyTheme.border
+                        : MyTheme.accent)
                     : hover.value
                         ? MyTheme.hoverBorder
                         : (widget.isOutline
